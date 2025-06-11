@@ -1,0 +1,499 @@
+/**
+ * Стили для компонента просмотра результатов цепочек
+ */
+
+/* Основная панель */
+.cr-panel {
+  font-family: Arial, sans-serif;
+  background-color: #f5f7fa;
+  border: 1px solid #dae0e7;
+  border-radius: 6px;
+  margin: 10px 0;
+  padding: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cr-panel.cr-error {
+  background-color: #fef1f1;
+  border-color: #f8d7da;
+}
+
+.cr-header {
+  margin-bottom: 15px;
+  border-bottom: 1px solid #e0e6ed;
+  padding-bottom: 10px;
+}
+
+.cr-header h2 {
+  margin: 0 0 5px 0;
+  font-size: 20px;
+  color: #2c3e50;
+}
+
+.cr-subheader {
+  font-size: 14px;
+  color: #7f8c8d;
+}
+
+.cr-empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #95a5a6;
+  font-size: 16px;
+  background-color: #f9fafb;
+  border-radius: 4px;
+}
+
+/* Контейнеры */
+.cr-stats-container,
+.cr-results-container,
+.cr-checkpoints-container {
+  margin-bottom: 20px;
+  background-color: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+}
+
+.cr-stats-container h3,
+.cr-results-container h3,
+.cr-checkpoints-container h3 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  color: #34495e;
+  border-bottom: 1px solid #e0e6ed;
+  padding-bottom: 10px;
+}
+
+/* Статистика */
+.cr-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.cr-stat-item {
+  background-color: #f9fafb;
+  padding: 15px;
+  border-radius: 4px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+
+.cr-stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.cr-stat-value {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #2c3e50;
+}
+
+.cr-stat-label {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.cr-stats-dates {
+  padding: 10px;
+  background-color: #f9fafb;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #7f8c8d;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Таблица результатов */
+.cr-table-container {
+  overflow-x: auto;
+}
+
+.cr-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.cr-results-table th {
+  text-align: left;
+  padding: 10px;
+  background-color: #f5f7fa;
+  color: #34495e;
+  border-bottom: 2px solid #e0e6ed;
+}
+
+.cr-results-table td {
+  padding: 10px;
+  border-bottom: 1px solid #e0e6ed;
+  vertical-align: middle;
+}
+
+.cr-results-table tr {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cr-results-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.cr-run-id {
+  font-family: monospace;
+  font-size: 13px;
+  color: #2c3e50;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cr-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+  min-width: 80px;
+}
+
+.cr-status-success {
+  background-color: #e6f7ee;
+  color: #27ae60;
+}
+
+.cr-status-error {
+  background-color: #fae8e8;
+  color: #e74c3c;
+}
+
+.cr-status-running {
+  background-color: #e7f3fe;
+  color: #3498db;
+}
+
+.cr-status-pending {
+  background-color: #f8f9fa;
+  color: #95a5a6;
+}
+
+.cr-status-cancelled {
+  background-color: #f5f5f5;
+  color: #7f8c8d;
+}
+
+.cr-status-unknown {
+  background-color: #f8f9fa;
+  color: #95a5a6;
+}
+
+.cr-results-empty {
+  text-align: center;
+  padding: 30px;
+  color: #95a5a6;
+  font-style: italic;
+}
+
+/* Чекпоинты */
+.cr-timeline {
+  position: relative;
+  height: 80px;
+  margin: 20px 0;
+  padding: 20px 30px;
+}
+
+.cr-timeline-track {
+  position: absolute;
+  top: 50%;
+  left: 30px;
+  right: 30px;
+  height: 4px;
+  background-color: #e0e6ed;
+  transform: translateY(-50%);
+}
+
+.cr-timeline-item {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.cr-timeline-icon {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+  border-radius: 50%;
+  border: 2px solid #3498db;
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.cr-timeline-item:hover .cr-timeline-icon {
+  transform: scale(1.1);
+}
+
+.cr-timeline-tooltip {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #2c3e50;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 3;
+}
+
+.cr-timeline-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #2c3e50 transparent transparent transparent;
+}
+
+.cr-timeline-item:hover .cr-timeline-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Типы чекпоинтов */
+.cr-cp-type-input .cr-timeline-icon,
+.cr-cp-item.cr-cp-type-input {
+  border-color: #3498db;
+}
+
+.cr-cp-type-output .cr-timeline-icon,
+.cr-cp-item.cr-cp-type-output {
+  border-color: #2ecc71;
+}
+
+.cr-cp-type-intermediate .cr-timeline-icon,
+.cr-cp-item.cr-cp-type-intermediate {
+  border-color: #f39c12;
+}
+
+.cr-cp-type-complete .cr-timeline-icon,
+.cr-cp-item.cr-cp-type-complete {
+  border-color: #27ae60;
+}
+
+.cr-cp-type-error .cr-timeline-icon,
+.cr-cp-item.cr-cp-type-error {
+  border-color: #e74c3c;
+}
+
+.cr-cp-type-segment .cr-timeline-icon,
+.cr-cp-item.cr-cp-type-segment {
+  border-color: #9b59b6;
+}
+
+.cr-checkpoints-empty {
+  text-align: center;
+  padding: 20px;
+  color: #95a5a6;
+  font-style: italic;
+}
+
+.cr-view-all-checkpoints {
+  text-align: center;
+  margin-top: 15px;
+}
+
+/* Модальное окно */
+.cr-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.cr-modal-content {
+  width: 80%;
+  max-width: 800px;
+  max-height: 90vh;
+  background-color: #fff;
+  border-radius: 6px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.cr-modal-content-wide {
+  max-width: 1000px;
+}
+
+.cr-modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e6ed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cr-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #2c3e50;
+}
+
+.cr-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #7f8c8d;
+}
+
+.cr-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.cr-modal-result {
+  margin-bottom: 20px;
+}
+
+.cr-modal-result h4,
+.cr-modal-checkpoints h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #34495e;
+}
+
+.cr-result-content {
+  background-color: #f9fafb;
+  border: 1px solid #e0e6ed;
+  border-radius: 4px;
+  padding: 15px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.cr-result-empty {
+  text-align: center;
+  padding: 30px;
+  color: #95a5a6;
+  font-style: italic;
+}
+
+.cr-cp-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.cr-cp-item {
+  background-color: #f9fafb;
+  border-radius: 4px;
+  padding: 10px;
+  border-left: 4px solid #3498db;
+}
+
+.cr-cp-item-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cr-cp-item-type {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.cr-cp-item-model {
+  color: #7f8c8d;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cr-cp-item-size {
+  color: #7f8c8d;
+  font-size: 13px;
+}
+
+.cr-cp-item-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cr-modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #e0e6ed;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Кнопки */
+.cr-btn {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.cr-btn-view {
+  background-color: #3498db;
+  color: #fff;
+}
+
+.cr-btn-view:hover {
+  background-color: #2980b9;
+}
+
+.cr-btn-view-all {
+  background-color: #34495e;
+  color: #fff;
+}
+
+.cr-btn-view-all:hover {
+  background-color: #2c3e50;
+}
+
+.cr-btn-close {
+  background-color: #95a5a6;
+  color: #fff;
+}
+
+.cr-btn-close:hover {
+  background-color: #7f8c8d;
+} 
