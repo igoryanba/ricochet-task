@@ -5,10 +5,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/grik-ai/ricochet-task/internal/config"
 	"github.com/grik-ai/ricochet-task/pkg/chain"
 	"github.com/grik-ai/ricochet-task/pkg/task"
+	"github.com/grik-ai/ricochet-task/internal/config"
 )
+
+// Совместимый алиас: ранее код использовал тип Server. Теперь основной
+// HTTP-сервер MCP называется MCPServer, поэтому добавляем алиас для
+// обратной совместимости.
+type Server = MCPServer
 
 // TaskMasterToolProvider предоставляет инструменты для работы с Task Master
 type TaskMasterToolProvider struct {

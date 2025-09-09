@@ -1,0 +1,223 @@
+name: bugfix
+description: Urgent bugfix workflow with immediate deployment
+version: "1.0.0"
+
+variables:
+  max_fix_time: 4h
+  requires_hotfix: false
+  notify_stakeholders: true
+
+settings:
+  max_concurrency: 2
+  default_timeout: 6h
+  ai_enabled: true
+  log_level: debug
+  retry_policy:
+    max_retries: 2
+    backoff_min: 2m
+    backoff_max: 10m
+
+triggers:
+  - type: ai_plan_created
+    conditions:
+      project_type: bugfix
+      priority: ["high", "critical"]
+    actions:
+      - create_hotfix_branch
+      - notify_urgent
+
+  - type: task_status_changed
+    conditions:
+      new_status: "Done"
+      priority: critical
+    actions:
+      - auto_deploy_hotfix
+
+stages:
+  investigation:
+    name: "Bug Investigation"
+    dependencies: []
+    auto_assign:
+      strategy: skills_based
+      skills: ["debugging", "investigation"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "root_cause_found eq true"
+      required: true
+    timeout: 2h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Investigate Bug: ${event.data.title}"
+          description: "Investigate root cause and impact"
+          priority: critical
+          labels: ["investigation", "urgent"]
+
+      - type: notification
+        parameters:
+          type: urgent
+          title: "Critical Bug Investigation Started"
+          message: "Bug investigation started: ${event.data.title}"
+          recipients: ["@on-call", "@tech-leads"]
+          channel: slack
+
+  fix:
+    name: "Bug Fix Implementation"
+    dependencies: ["investigation"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["development", "hotfix"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "fix_implemented eq true"
+        - "fix_tested eq true"
+      required: true
+    timeout: 3h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Implement Fix: ${event.data.title}"
+          description: "Implement and test the bug fix"
+          priority: critical
+          labels: ["bugfix", "implementation"]
+
+      - type: git
+        parameters:
+          action: create_branch
+          branch_name: "hotfix/${event.data.bug_id}"
+          repository: "${event.data.repository}"
+
+  testing:
+    name: "Urgent Testing"
+    dependencies: ["fix"]
+    auto_assign:
+      strategy: round_robin
+      skills: ["testing"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "regression_tests_passed eq true"
+        - "manual_testing_done eq true"
+      required: true
+    timeout: 1h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Urgent Testing: ${event.data.title}"
+          description: "Run regression and validation tests"
+          priority: critical
+          labels: ["testing", "urgent"]
+
+  review:
+    name: "Emergency Review"
+    dependencies: ["testing"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["senior-dev", "tech-lead"]
+      max_load: 1
+    completion:
+      trigger: manual
+      required: true
+    timeout: 30m
+    actions:
+      - type: git
+        parameters:
+          action: create_pr
+          title: "HOTFIX: ${event.data.title}"
+          source_branch: "hotfix/${event.data.bug_id}"
+          target_branch: "main"
+
+      - type: notification
+        parameters:
+          type: urgent
+          title: "Emergency Review Required"
+          message: "URGENT: Hotfix needs review: ${event.data.title}"
+          recipients: ["@tech-leads"]
+          channel: slack
+
+  deployment:
+    name: "Hotfix Deployment"
+    dependencies: ["review"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["devops", "deployment"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "deployed_to_prod eq true"
+      required: true
+    timeout: 30m
+    conditions:
+      - field: "event.data.priority"
+        operator: in
+        value: ["high", "critical"]
+    actions:
+      - type: git
+        parameters:
+          action: merge
+          source_branch: "hotfix/${event.data.bug_id}"
+          target_branch: "main"
+
+      - type: task
+        parameters:
+          action: create
+          title: "Deploy Hotfix: ${event.data.title}"
+          description: "Deploy hotfix to production"
+          priority: critical
+          labels: ["deployment", "hotfix"]
+
+      - type: notification
+        parameters:
+          type: success
+          title: "Hotfix Deployed"
+          message: "HOTFIX deployed to production: ${event.data.title}"
+          recipients: ["@stakeholders", "@on-call"]
+          channel: email
+
+  monitoring:
+    name: "Post-Deploy Monitoring"
+    dependencies: ["deployment"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["monitoring", "ops"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "monitoring_verified eq true"
+        - "older_than('30m')"
+      required: false
+    timeout: 1h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Monitor Hotfix: ${event.data.title}"
+          description: "Monitor production after hotfix deployment"
+          priority: high
+          labels: ["monitoring", "post-deploy"]
+
+notifications:
+  - event: stage_start
+    channels: ["slack"]
+    template: "urgent_stage_start"
+    users: ["${stage.assignee}", "@on-call"]
+
+  - event: stage_failed
+    channels: ["slack", "phone"]
+    template: "urgent_failure"
+    users: ["@tech-leads", "@incident-manager"]
+
+  - event: workflow_complete
+    channels: ["slack", "email"]
+    template: "hotfix_complete"
+    users: ["@stakeholders"]

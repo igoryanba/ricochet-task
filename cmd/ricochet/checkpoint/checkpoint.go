@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/grik-ai/ricochet-task/internal/config"
 	"github.com/grik-ai/ricochet-task/pkg/checkpoint"
+	"github.com/grik-ai/ricochet-task/internal/config"
 	"github.com/spf13/cobra"
 )
 

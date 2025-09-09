@@ -31,6 +31,16 @@ func (s *MCPServer) RegisterCommand(commandName string, handler CommandHandler) 
 	s.commands[commandName] = handler
 }
 
+// RegisterTool – обертка для совместимости с интерфейсом Task Master, позволяющая
+// регистрировать обработчики, возвращающие json.RawMessage. Внутри конвертируем
+// их к CommandHandler.
+func (s *MCPServer) RegisterTool(toolName string, handler func(json.RawMessage) (json.RawMessage, error)) {
+	wrapped := func(params json.RawMessage) (interface{}, error) {
+		return handler(params)
+	}
+	s.RegisterCommand(toolName, wrapped)
+}
+
 // MCPRequest представляет запрос к MCP-серверу
 type MCPRequest struct {
 	Command string          `json:"command"`
@@ -123,6 +133,37 @@ func InitMCPServer() *MCPServer {
 func RunMCPServer(address string) error {
 	server := InitMCPServer()
 	return server.Start(address)
+}
+
+// InitializeAllMCPHandlers регистрирует все доступные MCP-команды.
+// На текущем этапе реализована как заглушка, поскольку каждое расширение
+// регистрирует свои команды самостоятельно в тестах.
+func InitializeAllMCPHandlers(server *MCPServer) {
+	// Централизованная регистрация всех поддерживаемых MCP-команд.
+
+	// 1. Прогресс, мониторинг и визуализация цепочек
+	RegisterChainProgressCommand(server)
+	RegisterChainMonitorCommands(server)
+	RegisterChainVisualizationCommand(server)
+
+	// 2. Управление жизненным циклом цепочек
+	RegisterChainCreateCommands(server)
+	RegisterChainBuilderCommands(server)
+	RegisterChainInteractiveBuilderCommands(server)
+	RegisterChainControlCommands(server)
+
+	// 3. Чекпоинты
+	RegisterCheckpointCommands(server)
+
+	// 4. Работа с моделями
+	RegisterModelCommands(server)
+
+	// 5. Результаты выполнения цепочек
+	RegisterChainResultsCommands(server)
+
+	// 6. Интеграция с Task Master (инструменты/хендлеры)
+	RegisterTaskMasterIntegrationCommands(server)
+	RegisterTaskMasterTools(server)
 }
 
 // Пример использования:

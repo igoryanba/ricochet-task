@@ -29,6 +29,7 @@ type DefaultOrchestrator struct {
 	modelFactory    *model.ProviderFactory
 	runs            map[string]*RunMetadata
 	mutex           sync.RWMutex
+	runStore        *PostgresRunStore // Опциональное PostgreSQL хранилище
 }
 
 // NewOrchestrator создает новый оркестратор
@@ -50,6 +51,30 @@ func NewOrchestrator(
 		taskExecutor:    taskExecutor,
 		modelFactory:    modelFactory,
 		runs:            make(map[string]*RunMetadata),
+	}
+}
+
+// NewOrchestratorWithPostgres создает новый оркестратор с PostgreSQL хранилищем
+func NewOrchestratorWithPostgres(
+	apiClient *api.Client,
+	keyStore key.Store,
+	chainStore chain.Store,
+	checkpointStore checkpoint.Store,
+	taskManager task.TaskManager,
+	taskExecutor task.TaskExecutor,
+	modelFactory *model.ProviderFactory,
+	postgresRunStore *PostgresRunStore,
+) *DefaultOrchestrator {
+	return &DefaultOrchestrator{
+		apiClient:       apiClient,
+		keyStore:        keyStore,
+		chainStore:      chainStore,
+		checkpointStore: checkpointStore,
+		taskManager:     taskManager,
+		taskExecutor:    taskExecutor,
+		modelFactory:    modelFactory,
+		runs:            make(map[string]*RunMetadata),
+		runStore:        postgresRunStore,
 	}
 }
 
@@ -83,6 +108,14 @@ func (o *DefaultOrchestrator) RunChain(ctx context.Context, chainID string, inpu
 	o.mutex.Lock()
 	o.runs[runID] = runMetadata
 	o.mutex.Unlock()
+
+	// Также сохраняем в PostgreSQL если доступно
+	if o.runStore != nil {
+		if err := o.runStore.SaveRunMetadata(runMetadata); err != nil {
+			// Логируем ошибку, но продолжаем выполнение
+			fmt.Printf("Warning: failed to save run metadata to PostgreSQL: %v\n", err)
+		}
+	}
 
 	// Обновляем статус запуска
 	runMetadata.Status = StatusRunning
@@ -232,6 +265,89 @@ func (o *DefaultOrchestrator) ListCheckpoints(runID string) ([]checkpoint.Checkp
 	}
 
 	return checkpoints, nil
+}
+
+// GetRunStatistics возвращает статистику выполнения для цепочки
+func (o *DefaultOrchestrator) GetRunStatistics(chainID string) (*RunStatistics, error) {
+	// Если доступно PostgreSQL хранилище, используем его
+	if o.runStore != nil {
+		return o.runStore.GetRunStatistics(chainID)
+	}
+
+	// Fallback на in-memory хранилище
+	o.mutex.RLock()
+	defer o.mutex.RUnlock()
+
+	var chainRuns []*RunMetadata
+	for _, metadata := range o.runs {
+		if metadata.ChainID == chainID {
+			chainRuns = append(chainRuns, metadata)
+		}
+	}
+
+	if len(chainRuns) == 0 {
+		return &RunStatistics{}, nil
+	}
+
+	stats := &RunStatistics{
+		TotalRuns: len(chainRuns),
+	}
+
+	var totalDuration int64
+	var totalTokens int
+	var lastRunTime time.Time
+	var lastSuccessTime time.Time
+
+	for _, run := range chainRuns {
+		if run.Status == StatusCompleted {
+			stats.SuccessfulRuns++
+			if run.EndTime.After(lastSuccessTime) {
+				lastSuccessTime = run.EndTime
+			}
+		} else if run.Status == StatusFailed {
+			stats.FailedRuns++
+		}
+
+		if !run.EndTime.IsZero() && !run.StartTime.IsZero() {
+			duration := run.EndTime.Sub(run.StartTime).Milliseconds()
+			totalDuration += duration
+
+			if stats.MinDuration == 0 || duration < stats.MinDuration {
+				stats.MinDuration = duration
+			}
+			if duration > stats.MaxDuration {
+				stats.MaxDuration = duration
+			}
+		}
+
+		totalTokens += run.TotalTokens
+
+		if run.EndTime.After(lastRunTime) {
+			lastRunTime = run.EndTime
+		}
+	}
+
+	if stats.TotalRuns > 0 {
+		stats.SuccessRate = float64(stats.SuccessfulRuns) / float64(stats.TotalRuns) * 100
+		stats.AverageTokensUsed = totalTokens / stats.TotalRuns
+		stats.TotalTokensUsed = totalTokens
+
+		if stats.TotalRuns > 0 {
+			stats.AverageDuration = totalDuration / int64(stats.TotalRuns)
+		}
+
+		// Примерная оценка стоимости ($0.02 за 1000 токенов)
+		stats.EstimatedCost = float64(totalTokens) * 0.02 / 1000
+	}
+
+	if !lastRunTime.IsZero() {
+		stats.LastRunDate = lastRunTime.Format(time.RFC3339)
+	}
+	if !lastSuccessTime.IsZero() {
+		stats.LastSuccessfulDate = lastSuccessTime.Format(time.RFC3339)
+	}
+
+	return stats, nil
 }
 
 // executeChain выполняет цепочку моделей

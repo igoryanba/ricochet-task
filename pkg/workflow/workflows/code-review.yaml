@@ -1,0 +1,249 @@
+name: code-review
+description: Comprehensive code review workflow with AI assistance
+version: "1.0.0"
+
+variables:
+  reviewer_count: 2
+  min_approvals: 1
+  auto_merge: false
+  require_tests: true
+
+settings:
+  max_concurrency: 3
+  default_timeout: 48h
+  ai_enabled: true
+  log_level: info
+  retry_policy:
+    max_retries: 2
+    backoff_min: 10m
+    backoff_max: 1h
+
+triggers:
+  - type: git_pr_created
+    conditions:
+      branch_matches: "feature/*"
+    actions:
+      - assign_reviewers
+      - run_automated_checks
+
+  - type: ai_plan_created
+    conditions:
+      project_type: review
+    actions:
+      - analyze_code_changes
+      - create_review_checklist
+
+stages:
+  preparation:
+    name: "Review Preparation"
+    dependencies: []
+    auto_assign:
+      strategy: automatic
+      skills: ["automation"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "checks_passed eq true"
+        - "reviewers_assigned eq true"
+      required: true
+    actions:
+      - type: git
+        parameters:
+          action: run_ci_checks
+          repository: "${event.data.repository}"
+          pr_number: "${event.data.pr_number}"
+
+      - type: task
+        parameters:
+          action: create
+          title: "Run Automated Checks"
+          description: "CI/CD, linting, tests, security scans"
+          priority: high
+          labels: ["review", "automation"]
+
+      - type: ai_analysis
+        parameters:
+          action: code_analysis
+          scope: "changes_only"
+          focus: ["complexity", "security", "performance"]
+
+  review:
+    name: "Code Review"
+    dependencies: ["preparation"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["code-review", "senior-dev"]
+      max_load: 3
+    completion:
+      trigger: condition
+      conditions:
+        - "approvals gte ${workflow.variables.min_approvals}"
+        - "blocking_comments eq 0"
+      required: true
+    timeout: 24h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Code Review: ${event.data.title}"
+          description: "Review code changes for quality, security, and best practices"
+          priority: high
+          labels: ["review", "manual"]
+
+      - type: notification
+        parameters:
+          type: info
+          title: "Code Review Required"
+          message: "Please review PR: ${event.data.title}"
+          recipients: ["${event.data.reviewers}"]
+          channel: slack
+
+  testing:
+    name: "Additional Testing"
+    dependencies: ["preparation"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["testing", "qa"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "test_coverage gte 80"
+        - "integration_tests_passed eq true"
+      required: true
+    conditions:
+      - field: "workflow.variables.require_tests"
+        operator: eq
+        value: true
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Test Coverage Check"
+          description: "Verify test coverage meets requirements"
+          priority: medium
+          labels: ["testing", "coverage"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Integration Testing"
+          description: "Run integration tests for changed components"
+          priority: high
+          labels: ["testing", "integration"]
+
+  security:
+    name: "Security Review"
+    dependencies: ["preparation"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["security", "senior-dev"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "security_scan_passed eq true"
+        - "security_approved eq true"
+      required: true
+    conditions:
+      - field: "has_security_changes()"
+        operator: eq
+        value: true
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Security Review"
+          description: "Review security implications of changes"
+          priority: critical
+          labels: ["security", "review"]
+
+      - type: ai_analysis
+        parameters:
+          action: security_scan
+          scope: "changes_only"
+          focus: ["vulnerabilities", "secrets", "permissions"]
+
+  approval:
+    name: "Final Approval"
+    dependencies: ["review", "testing", "security"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["tech-lead", "architect"]
+      max_load: 1
+    completion:
+      trigger: manual
+      required: true
+    actions:
+      - type: notification
+        parameters:
+          type: info
+          title: "Ready for Final Approval"
+          message: "PR passed all checks: ${event.data.title}"
+          recipients: ["@tech-leads"]
+          channel: slack
+
+  merge:
+    name: "Merge & Deploy"
+    dependencies: ["approval"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["devops", "tech-lead"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "merge_completed eq true"
+      required: false
+    conditions:
+      - field: "workflow.variables.auto_merge"
+        operator: eq
+        value: true
+      - field: "all_checks_passed()"
+        operator: eq
+        value: true
+    actions:
+      - type: git
+        parameters:
+          action: merge_pr
+          repository: "${event.data.repository}"
+          pr_number: "${event.data.pr_number}"
+          merge_method: "squash"
+
+      - type: task
+        parameters:
+          action: create
+          title: "Deploy Changes"
+          description: "Deploy merged changes to staging"
+          priority: high
+          labels: ["deployment", "staging"]
+
+      - type: notification
+        parameters:
+          type: success
+          title: "PR Merged & Deployed"
+          message: "Changes merged and deployed: ${event.data.title}"
+          recipients: ["@team"]
+          channel: slack
+
+notifications:
+  - event: stage_start
+    channels: ["slack"]
+    template: "review_stage_start"
+    users: ["${stage.assignee}"]
+
+  - event: review_comment_added
+    channels: ["slack"]
+    template: "review_comment"
+    users: ["${event.data.author}"]
+
+  - event: checks_failed
+    channels: ["slack", "email"]
+    template: "review_checks_failed"
+    users: ["${event.data.author}", "@tech-leads"]
+
+  - event: workflow_complete
+    channels: ["slack", "email"]
+    template: "review_complete"
+    users: ["@team"]

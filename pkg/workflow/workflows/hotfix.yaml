@@ -1,0 +1,373 @@
+name: hotfix
+description: Emergency hotfix workflow for critical production issues
+version: "1.0.0"
+
+variables:
+  max_fix_time: 2h
+  skip_staging: false
+  immediate_deployment: true
+  incident_severity: "critical"
+
+settings:
+  max_concurrency: 3
+  default_timeout: 4h
+  ai_enabled: true
+  log_level: debug
+  retry_policy:
+    max_retries: 1
+    backoff_min: 1m
+    backoff_max: 5m
+
+triggers:
+  - type: incident_created
+    conditions:
+      severity: ["critical", "high"]
+      production_impacted: true
+    actions:
+      - create_incident_room
+      - notify_on_call
+      - create_hotfix_branch
+
+  - type: ai_plan_created
+    conditions:
+      project_type: hotfix
+      priority: critical
+    actions:
+      - analyze_incident_impact
+      - create_emergency_plan
+
+stages:
+  assessment:
+    name: "Incident Assessment"
+    dependencies: []
+    auto_assign:
+      strategy: skills_based
+      skills: ["incident-response", "sre", "on-call"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "impact_assessed eq true"
+        - "root_cause_identified eq true"
+      required: true
+    timeout: 30m
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Impact Assessment: ${event.data.title}"
+          description: "Assess production impact and affected systems"
+          priority: critical
+          labels: ["incident", "assessment"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Root Cause Analysis"
+          description: "Identify root cause and affected components"
+          priority: critical
+          labels: ["incident", "analysis"]
+
+      - type: ai_analysis
+        parameters:
+          action: incident_analysis
+          scope: "production_logs"
+          focus: ["error_patterns", "affected_services", "timeline"]
+
+      - type: notification
+        parameters:
+          type: urgent
+          title: "Critical Incident - Assessment Started"
+          message: "🚨 CRITICAL: ${event.data.title} - Assessment in progress"
+          recipients: ["@on-call", "@incident-commander", "@stakeholders"]
+          channel: incident
+
+  fix_development:
+    name: "Hotfix Development"
+    dependencies: ["assessment"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["senior-dev", "architect", "domain-expert"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "fix_implemented eq true"
+        - "fix_tested eq true"
+      required: true
+    timeout: 90m
+    actions:
+      - type: git
+        parameters:
+          action: create_branch
+          branch_name: "hotfix/${event.data.incident_id}"
+          repository: "${event.data.repository}"
+          base_branch: "main"
+
+      - type: task
+        parameters:
+          action: create
+          title: "Implement Hotfix: ${event.data.title}"
+          description: "Implement minimal fix for production issue"
+          priority: critical
+          labels: ["hotfix", "development"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Unit Test Hotfix"
+          description: "Write focused tests for hotfix changes"
+          priority: high
+          labels: ["testing", "hotfix"]
+
+      - type: ai_analysis
+        parameters:
+          action: code_analysis
+          scope: "hotfix_changes"
+          focus: ["correctness", "side_effects", "minimal_change"]
+
+  testing:
+    name: "Emergency Testing"
+    dependencies: ["fix_development"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["testing", "qa", "automation"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "critical_tests_passed eq true"
+        - "regression_check_passed eq true"
+      required: true
+    timeout: 30m
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Critical Path Testing"
+          description: "Test critical paths and hotfix functionality"
+          priority: critical
+          labels: ["testing", "critical-path"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Regression Check"
+          description: "Quick regression test of core functionality"
+          priority: high
+          labels: ["testing", "regression"]
+
+      - type: notification
+        parameters:
+          type: info
+          title: "Hotfix Testing in Progress"
+          message: "🧪 Testing hotfix for: ${event.data.title}"
+          recipients: ["@incident-commander", "@on-call"]
+          channel: incident
+
+  review:
+    name: "Emergency Review"
+    dependencies: ["testing"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["tech-lead", "architect", "senior-dev"]
+      max_load: 1
+    completion:
+      trigger: manual
+      required: true
+    timeout: 15m
+    actions:
+      - type: git
+        parameters:
+          action: create_pr
+          title: "HOTFIX: ${event.data.title}"
+          source_branch: "hotfix/${event.data.incident_id}"
+          target_branch: "main"
+          emergency: true
+
+      - type: task
+        parameters:
+          action: create
+          title: "Emergency Code Review"
+          description: "Fast-track review of hotfix changes"
+          priority: critical
+          labels: ["review", "emergency"]
+
+      - type: notification
+        parameters:
+          type: urgent
+          title: "URGENT: Hotfix Review Required"
+          message: "🚨 Emergency review needed for: ${event.data.title}"
+          recipients: ["@tech-leads", "@architects"]
+          channel: incident
+
+  staging_deployment:
+    name: "Staging Verification"
+    dependencies: ["review"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["devops", "sre"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "staging_deployed eq true"
+        - "staging_verified eq true"
+      required: true
+    timeout: 20m
+    conditions:
+      - field: "workflow.variables.skip_staging"
+        operator: eq
+        value: false
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Deploy to Staging"
+          description: "Deploy hotfix to staging for final verification"
+          priority: critical
+          labels: ["deployment", "staging"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Staging Smoke Test"
+          description: "Quick smoke test on staging environment"
+          priority: critical
+          labels: ["testing", "smoke-test"]
+
+  production_deployment:
+    name: "Production Hotfix"
+    dependencies: ["staging_deployment"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["sre", "devops", "incident-commander"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "production_deployed eq true"
+        - "hotfix_verified eq true"
+      required: true
+    timeout: 30m
+    actions:
+      - type: git
+        parameters:
+          action: merge_pr
+          repository: "${event.data.repository}"
+          pr_number: "${event.data.pr_number}"
+          merge_method: "merge"
+
+      - type: task
+        parameters:
+          action: create
+          title: "Production Hotfix Deployment"
+          description: "Deploy hotfix to production with monitoring"
+          priority: critical
+          labels: ["deployment", "production", "hotfix"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Post-Deploy Verification"
+          description: "Verify hotfix resolves the production issue"
+          priority: critical
+          labels: ["verification", "monitoring"]
+
+      - type: notification
+        parameters:
+          type: info
+          title: "Hotfix Deployment Starting"
+          message: "🚀 Deploying hotfix to production: ${event.data.title}"
+          recipients: ["@incident-team", "@stakeholders"]
+          channel: incident
+
+  monitoring:
+    name: "Post-Hotfix Monitoring"
+    dependencies: ["production_deployment"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["sre", "monitoring", "on-call"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "incident_resolved eq true"
+        - "monitoring_stable eq true"
+        - "older_than('30m')"
+      required: true
+    timeout: 2h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Monitor Hotfix Impact"
+          description: "Monitor production metrics and verify incident resolution"
+          priority: high
+          labels: ["monitoring", "incident-resolution"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Incident Closure"
+          description: "Document resolution and close incident"
+          priority: medium
+          labels: ["documentation", "incident-closure"]
+
+      - type: notification
+        parameters:
+          type: success
+          title: "Hotfix Deployed Successfully"
+          message: "✅ Hotfix deployed and monitoring: ${event.data.title}"
+          recipients: ["@incident-team", "@stakeholders"]
+          channel: incident
+
+  post_mortem:
+    name: "Post-Mortem Planning"
+    dependencies: ["monitoring"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["incident-commander", "tech-lead"]
+      max_load: 1
+    completion:
+      trigger: condition
+      conditions:
+        - "post_mortem_scheduled eq true"
+      required: false
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Schedule Post-Mortem"
+          description: "Schedule blameless post-mortem for incident"
+          priority: medium
+          labels: ["post-mortem", "process-improvement"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Document Timeline"
+          description: "Document incident timeline and response actions"
+          priority: medium
+          labels: ["documentation", "timeline"]
+
+notifications:
+  - event: stage_start
+    channels: ["slack", "pagerduty"]
+    template: "hotfix_stage_start"
+    users: ["${stage.assignee}", "@incident-commander"]
+
+  - event: stage_failed
+    channels: ["slack", "pagerduty", "phone"]
+    template: "hotfix_stage_failed"
+    users: ["@incident-response", "@on-call"]
+
+  - event: production_deployed
+    channels: ["slack", "email"]
+    template: "hotfix_deployed"
+    users: ["@all", "@stakeholders"]
+
+  - event: incident_resolved
+    channels: ["slack", "email"]
+    template: "incident_resolved"
+    users: ["@incident-team", "@stakeholders"]

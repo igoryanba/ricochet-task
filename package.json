@@ -1,0 +1,57 @@
+{
+  "name": "@grik-ai/ricochet",
+  "version": "0.1.0",
+  "description": "Enterprise AI Workflow Orchestrator - TaskMaster for teams",
+  "main": "dist/index.js",
+  "bin": {
+    "ricochet": "./bin/ricochet"
+  },
+  "scripts": {
+    "install": "node scripts/install-binary.js",
+    "postinstall": "echo '\n🎉 Ricochet-Task installed! Run: ricochet init'"
+  },
+  "keywords": [
+    "ai",
+    "task-management", 
+    "workflow",
+    "orchestration",
+    "enterprise",
+    "teamwork",
+    "claude",
+    "openai",
+    "anthropic",
+    "taskmaster",
+    "mcp",
+    "cursor",
+    "vscode"
+  ],
+  "author": "GRIK AI <contact@grik.ai>",
+  "license": "MIT",
+  "homepage": "https://grik.ai/ricochet",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/grik-ai/ricochet-task.git"
+  },
+  "bugs": {
+    "url": "https://github.com/grik-ai/ricochet-task/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux", 
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "files": [
+    "bin/",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ],
+  "preferGlobal": true
+}

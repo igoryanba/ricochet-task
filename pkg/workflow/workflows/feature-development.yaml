@@ -1,0 +1,247 @@
+name: feature-development
+description: Complete feature development workflow with AI assistance
+version: "1.0.0"
+
+variables:
+  default_assignee: ""
+  max_parallel_tasks: 3
+  review_required: true
+  auto_deploy: false
+
+settings:
+  max_concurrency: 5
+  default_timeout: 24h
+  ai_enabled: true
+  log_level: info
+  retry_policy:
+    max_retries: 3
+    backoff_min: 5m
+    backoff_max: 30m
+
+triggers:
+  - type: ai_plan_created
+    conditions:
+      project_type: feature
+      complexity: ["medium", "complex"]
+    actions:
+      - create_feature_branch
+      - notify_team
+
+  - type: task_status_changed
+    conditions:
+      new_status: "Done"
+      stage: "development"
+    actions:
+      - auto_transition_testing
+
+  - type: git_push
+    conditions:
+      branch_matches: "feature/*"
+    actions:
+      - update_task_progress
+      - run_ci_checks
+
+stages:
+  planning:
+    name: "Requirements & Planning"
+    dependencies: []
+    auto_assign:
+      strategy: skills_based
+      skills: ["analysis", "planning"]
+      max_load: 5
+    completion:
+      trigger: condition
+      conditions:
+        - "requirements_approved eq true"
+      required: true
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Requirements Analysis"
+          description: "Analyze and document feature requirements"
+          priority: high
+          labels: ["planning", "requirements"]
+        condition: "has_tag('planning')"
+      
+      - type: notification
+        parameters:
+          type: info
+          title: "Planning Phase Started"
+          message: "Feature planning has begun for: ${event.data.title}"
+          recipients: ["${workflow.variables.default_assignee}"]
+          channel: slack
+
+  design:
+    name: "Architecture & Design"
+    dependencies: ["planning"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["architecture", "design"]
+      max_load: 3
+    completion:
+      trigger: manual
+      required: true
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Technical Design"
+          description: "Create technical design and architecture"
+          priority: high
+          labels: ["design", "architecture"]
+
+      - type: git
+        parameters:
+          action: create_branch
+          branch_name: "feature/${event.data.slug}"
+          repository: "${event.data.repository}"
+
+  development:
+    name: "Implementation"
+    dependencies: ["design"]
+    auto_assign:
+      strategy: workload_balanced
+      skills: ["development"]
+      max_load: 8
+    completion:
+      trigger: condition
+      conditions:
+        - "git_commits gt 0"
+        - "code_review_approved eq true"
+      required: true
+    timeout: 72h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Core Implementation"
+          description: "Implement feature according to design"
+          priority: high
+          labels: ["development", "implementation"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Unit Tests"
+          description: "Write comprehensive unit tests"
+          priority: medium
+          labels: ["testing", "unit-tests"]
+
+  testing:
+    name: "Quality Assurance"
+    dependencies: ["development"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["testing", "qa"]
+      max_load: 4
+    completion:
+      trigger: condition
+      conditions:
+        - "test_coverage gte 80"
+        - "all_tests_passed eq true"
+      required: true
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Integration Testing"
+          description: "Run integration and E2E tests"
+          priority: high
+          labels: ["testing", "integration"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Manual QA"
+          description: "Manual testing and validation"
+          priority: medium
+          labels: ["testing", "manual"]
+
+  review:
+    name: "Code Review"
+    dependencies: ["development"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["review", "senior-dev"]
+      max_load: 2
+    completion:
+      trigger: manual
+      required: true
+    conditions:
+      - field: "workflow.variables.review_required"
+        operator: eq
+        value: true
+    actions:
+      - type: git
+        parameters:
+          action: create_pr
+          title: "Feature: ${event.data.title}"
+          source_branch: "feature/${event.data.slug}"
+          target_branch: "develop"
+
+      - type: notification
+        parameters:
+          type: info
+          title: "Code Review Required"
+          message: "Please review PR for feature: ${event.data.title}"
+          recipients: ["@tech-leads"]
+          channel: slack
+
+  deployment:
+    name: "Deployment"
+    dependencies: ["testing", "review"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["devops", "deployment"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "deployment_successful eq true"
+      required: false
+    conditions:
+      - field: "workflow.variables.auto_deploy"
+        operator: eq
+        value: true
+      - field: "is_business_hours()"
+        operator: eq
+        value: true
+    actions:
+      - type: git
+        parameters:
+          action: merge
+          source_branch: "feature/${event.data.slug}"
+          target_branch: "develop"
+
+      - type: task
+        parameters:
+          action: create
+          title: "Deploy to Staging"
+          description: "Deploy feature to staging environment"
+          priority: high
+          labels: ["deployment", "staging"]
+
+      - type: notification
+        parameters:
+          type: success
+          title: "Feature Deployed"
+          message: "Feature '${event.data.title}' has been deployed to staging"
+          recipients: ["@stakeholders"]
+          channel: email
+
+notifications:
+  - event: stage_start
+    channels: ["slack"]
+    template: "stage_start_template"
+    users: ["${stage.assignee}"]
+
+  - event: stage_complete
+    channels: ["slack", "email"]
+    template: "stage_complete_template"
+    users: ["@team"]
+
+  - event: workflow_failed
+    channels: ["slack", "email"]
+    template: "workflow_error_template"
+    users: ["@tech-leads", "@project-manager"]

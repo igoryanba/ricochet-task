@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/grik-ai/ricochet-task/pkg/api"
+	"github.com/grik-ai/ricochet-task/pkg/ai"
 	"github.com/grik-ai/ricochet-task/pkg/chain"
 	"github.com/grik-ai/ricochet-task/pkg/checkpoint"
 	"github.com/grik-ai/ricochet-task/pkg/key"
@@ -52,13 +52,14 @@ type ChunkInfo struct {
 
 // RicochetService отвечает за оркестрацию выполнения цепочек моделей
 type RicochetService struct {
-	apiClient       *api.Client
+	hybridAI        *ai.HybridAIClient
 	keyStore        key.Store
 	chainStore      chain.Store
 	checkpointStore checkpoint.Store
 	runs            map[string]*RunMetadata
 	chunker         Chunker
 	mutex           sync.RWMutex
+	logger          ai.Logger
 }
 
 // Chunker отвечает за разбиение текста на сегменты
@@ -145,19 +146,21 @@ func (c *SimpleChunker) Merge(chunks []ChunkInfo) (string, error) {
 
 // NewRicochetService создает новый экземпляр RicochetService
 func NewRicochetService(
-	apiClient *api.Client,
+	hybridAI *ai.HybridAIClient,
 	keyStore key.Store,
 	chainStore chain.Store,
 	checkpointStore checkpoint.Store,
+	logger ai.Logger,
 ) *RicochetService {
 	return &RicochetService{
-		apiClient:       apiClient,
+		hybridAI:        hybridAI,
 		keyStore:        keyStore,
 		chainStore:      chainStore,
 		checkpointStore: checkpointStore,
 		runs:            make(map[string]*RunMetadata),
 		chunker:         &SimpleChunker{},
 		mutex:           sync.RWMutex{},
+		logger:          logger,
 	}
 }
 
@@ -268,23 +271,10 @@ func (s *RicochetService) processChain(ctx context.Context, c chain.Chain, input
 		runMeta.Progress = float64(i) / float64(totalModels) * 100
 		s.mutex.Unlock()
 
-		// Получение ключа API
-		apiKey, err := s.getAPIKey(model.Type)
-		if err != nil {
-			return "", fmt.Errorf("ошибка при получении API-ключа для модели %s: %w", model.Name, err)
-		}
-
-		// Создаем чат-сервис и отправляем запрос
-		chatService := api.NewChatService(s.apiClient)
-
-		// Определяем провайдера
-		provider := getProviderFromModelType(model.Type)
-		s.apiClient.SetAPIKey(provider, apiKey)
-
-		// Создаем запрос к модели
-		chatRequest := &api.ChatRequest{
+		// Создаем запрос к модели с использованием HybridAIClient
+		chatRequest := &ai.HybridChatRequest{
 			Model: string(model.Name),
-			Messages: []api.ChatMessage{
+			Messages: []ai.Message{
 				{
 					Role:    "system",
 					Content: model.Prompt,
@@ -296,26 +286,50 @@ func (s *RicochetService) processChain(ctx context.Context, c chain.Chain, input
 			},
 			MaxTokens:   model.MaxTokens,
 			Temperature: model.Temperature,
+			Strategy:    ai.RouteUserKeyFirst, // Сначала пытаемся использовать пользовательские ключи
 		}
 
-		// Отправляем запрос
-		chatResponse, err := chatService.SendMessage(chatRequest)
+		s.logger.Debug("Sending request to model", "model", model.Name, "type", model.Type)
+
+		// Отправляем запрос через HybridAIClient
+		chatResponse, err := s.hybridAI.Chat(ctx, chatRequest)
 		if err != nil {
-			return "", fmt.Errorf("ошибка при вызове модели %s: %w", model.Name, err)
+			// Пытаемся использовать только подписку если пользовательские ключи не работают
+			s.logger.Warn("User keys failed, trying subscription", "error", err)
+			chatRequest.Strategy = ai.RouteSubscription
+			chatResponse, err = s.hybridAI.Chat(ctx, chatRequest)
+			if err != nil {
+				return "", fmt.Errorf("ошибка при вызове модели %s: %w", model.Name, err)
+			}
 		}
 
 		// Обрабатываем ответ
-		response := chatResponse.Message.Content
+		if len(chatResponse.Choices) == 0 {
+			return "", fmt.Errorf("пустой ответ от модели %s", model.Name)
+		}
+		response := chatResponse.Choices[0].Message.Content
+
+		// Логируем информацию о маршрутизации
+		s.logger.Info("Model response received", 
+			"model", model.Name,
+			"provider", chatResponse.Provider,
+			"routed_via", chatResponse.RoutedVia,
+			"billed_to", chatResponse.BilledTo,
+		)
 
 		// Обновляем текущий текст
 		currentText = response
 
 		// Обновление статистики токенов
 		s.mutex.Lock()
-		runMeta.TotalTokens += len(currentText) / 4 // Грубая оценка количества токенов
+		if chatResponse.Usage.TotalTokens > 0 {
+			runMeta.TotalTokens += chatResponse.Usage.TotalTokens
+		} else {
+			runMeta.TotalTokens += len(currentText) / 4 // Грубая оценка количества токенов
+		}
 		s.mutex.Unlock()
 
-		// Сохранение чекпоинта
+		// Сохранение чекпоинта с информацией о маршрутизации
 		modelCheckpoint := checkpoint.Checkpoint{
 			ID:        uuid.New().String(),
 			ChainID:   c.ID,
@@ -324,11 +338,18 @@ func (s *RicochetService) processChain(ctx context.Context, c chain.Chain, input
 			Content:   response,
 			CreatedAt: time.Now(),
 			MetaData: map[string]interface{}{
-				"model_name":  string(model.Name),
-				"model_type":  string(model.Type),
-				"model_role":  string(model.Role),
-				"temperature": model.Temperature,
-				"max_tokens":  model.MaxTokens,
+				"model_name":     string(model.Name),
+				"model_type":     string(model.Type),
+				"model_role":     string(model.Role),
+				"temperature":    model.Temperature,
+				"max_tokens":     model.MaxTokens,
+				// Информация о гибридном AI роутинге
+				"provider":       chatResponse.Provider,
+				"routed_via":     chatResponse.RoutedVia,
+				"billed_to":      chatResponse.BilledTo,
+				"prompt_tokens":  chatResponse.Usage.PromptTokens,
+				"completion_tokens": chatResponse.Usage.CompletionTokens,
+				"total_tokens":   chatResponse.Usage.TotalTokens,
 			},
 		}
 
@@ -344,42 +365,25 @@ func (s *RicochetService) processChain(ctx context.Context, c chain.Chain, input
 	return currentText, nil
 }
 
-// getAPIKey получает подходящий API-ключ для указанного типа модели
-func (s *RicochetService) getAPIKey(modelType chain.ModelType) (string, error) {
-	// Получение списка ключей
-	keys, err := s.keyStore.List()
-	if err != nil {
-		return "", fmt.Errorf("ошибка при получении списка ключей: %w", err)
-	}
+// UpdateUserAPIKeys обновляет пользовательские API ключи в HybridAIClient
+func (s *RicochetService) UpdateUserAPIKeys(userKeys *ai.UserAPIKeys) {
+	s.hybridAI.UpdateUserAPIKeys(userKeys)
+	s.logger.Info("Updated user API keys in RicochetService")
+}
 
-	// Фильтрация ключей по типу провайдера
-	var providerName string
-	switch modelType {
-	case chain.ModelTypeOpenAI:
-		providerName = "openai"
-	case chain.ModelTypeClaude:
-		providerName = "claude"
-	case chain.ModelTypeDeepSeek:
-		providerName = "deepseek"
-	case chain.ModelTypeGrok:
-		providerName = "grok"
-	default:
-		return "", fmt.Errorf("неизвестный тип модели: %v", modelType)
-	}
+// GetAvailableModels возвращает доступные модели для пользователя
+func (s *RicochetService) GetAvailableModels() *ai.AvailableModels {
+	return s.hybridAI.GetAvailableModels()
+}
 
-	var validKeys []key.Key
-	for _, k := range keys {
-		if k.Provider == providerName {
-			validKeys = append(validKeys, k)
-		}
-	}
+// GetUsageStats возвращает статистику использования AI
+func (s *RicochetService) GetUsageStats() *ai.UsageStats {
+	return s.hybridAI.GetUsageStats()
+}
 
-	if len(validKeys) == 0 {
-		return "", fmt.Errorf("не найдены ключи для провайдера %s", providerName)
-	}
-
-	// Пока просто возвращаем первый подходящий ключ
-	return validKeys[0].Value, nil
+// ValidateUserKeys проверяет валидность пользовательских ключей
+func (s *RicochetService) ValidateUserKeys() map[string]error {
+	return s.hybridAI.ValidateUserKeys(context.Background())
 }
 
 // GetRunStatus возвращает статус выполнения цепочки
@@ -457,20 +461,25 @@ func (s *RicochetService) GetRunResults(runID string) (string, error) {
 	return checkpoint.Content, nil
 }
 
-// getProviderFromModelType возвращает тип провайдера для модели
-func getProviderFromModelType(modelType chain.ModelType) api.Provider {
-	switch modelType {
-	case chain.ModelTypeOpenAI:
-		return api.ProviderOpenAI
-	case chain.ModelTypeClaude:
-		return api.ProviderClaude
-	case chain.ModelTypeDeepSeek:
-		return api.ProviderDeepSeek
-	case chain.ModelTypeGrok:
-		return api.ProviderGrok
-	case chain.ModelTypeMistral:
-		return api.ProviderMistral
-	default:
-		return api.ProviderOpenAI
+
+// ListCheckpoints возвращает список чекпоинтов для указанного chainID
+func (s *RicochetService) ListCheckpoints(chainOrRunID string) ([]checkpoint.Checkpoint, error) {
+	// Для упрощения считаем, что chainOrRunID является chainID.
+	if s.checkpointStore == nil {
+		return nil, fmt.Errorf("checkpoint store not configured")
 	}
+	return s.checkpointStore.List(chainOrRunID)
+}
+
+// GetCheckpoint возвращает чекпоинт по ID
+func (s *RicochetService) GetCheckpoint(id string) (checkpoint.Checkpoint, error) {
+	if s.checkpointStore == nil {
+		return checkpoint.Checkpoint{}, fmt.Errorf("checkpoint store not configured")
+	}
+	return s.checkpointStore.Get(id)
+}
+
+// GetCheckpointStore возвращает используемое хранилище чекпоинтов
+func (s *RicochetService) GetCheckpointStore() checkpoint.Store {
+	return s.checkpointStore
 }

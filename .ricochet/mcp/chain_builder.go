@@ -685,10 +685,29 @@ func createChainFromSession(session *ChainBuilderSession) (string, error) {
 		models = append(models, model)
 	}
 
-	// Создаем цепочку
-	chainID := fmt.Sprintf("chain-%d", time.Now().UnixNano())
+	// Конвертируем шаги в формат StoredStep для chain_store
+	storedSteps := make([]StoredStep, 0, len(models))
+	for _, m := range models {
+		storedSteps = append(storedSteps, StoredStep{
+			ID:            m.ID,
+			Name:          string(m.Name),
+			Type:          string(m.Type),
+			RoleID:        string(m.Role),
+			ModelProvider: string(m.Type), // Provider не хранится в Model – берём из Type, т.к. выше так задали
+			ModelID:       string(m.Name), // Аналогично – упрощённая связь Name/ID
+		})
+	}
 
-	// В реальной реализации здесь было бы сохранение цепочки в хранилище
+	// Формируем и сохраняем цепочку через in-memory store
+	chainID := fmt.Sprintf("chain-%d", time.Now().UnixNano())
+	c := Chain{
+		ID:    chainID,
+		Name:  session.ChainName,
+		Steps: storedSteps,
+	}
+	if err := saveChain(c); err != nil {
+		return "", fmt.Errorf("unable to save chain: %v", err)
+	}
 
 	return chainID, nil
 }

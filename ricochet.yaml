@@ -1,0 +1,43 @@
+providers:
+  gamesdrop-youtrack:
+    name: gamesdrop-youtrack
+    type: youtrack
+    enabled: true
+    baseUrl: https://gamesdrop.youtrack.cloud
+    authType: bearer
+    token: perm-YWRtaW4=.NTItMA==.75T2Un6ARYfePI3oP9ZoJAXzC8bZgs
+    timeout: 60s
+    settings:
+      defaultProject: ""
+      defaultBoard: ""
+      autoCreateBoards: false
+      useShortNames: true
+      syncComments: true
+      syncAttachments: true
+      syncTimeTracking: true
+      syncCustomFields: true
+      customFieldMappings:
+        story_points: Story Points
+        sprint: Sprint
+        epic: Epic
+      workflowMappings:
+        todo: Open
+        in_progress: In Progress
+        done: Fixed
+        blocked: Blocked
+    rateLimits:
+      requestsPerSecond: 10
+      burstSize: 50
+    retryConfig:
+      maxRetries: 3
+      retryableErrors:
+        - "429"
+        - "500"
+        - "502"
+        - "503"
+        - "504"
+
+defaultProvider: gamesdrop-youtrack
+enableHealthCheck: true
+healthCheckInterval: 60s
+enableMetrics: false

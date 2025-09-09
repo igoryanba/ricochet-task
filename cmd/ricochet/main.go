@@ -4,10 +4,16 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/grik-ai/ricochet-task/cmd/board"
+	contextcmd "github.com/grik-ai/ricochet-task/cmd/context"
+	mcpcmd "github.com/grik-ai/ricochet-task/cmd/mcp"
+	"github.com/grik-ai/ricochet-task/cmd/providers"
 	"github.com/grik-ai/ricochet-task/cmd/ricochet/chain"
 	"github.com/grik-ai/ricochet-task/cmd/ricochet/checkpoint"
 	"github.com/grik-ai/ricochet-task/cmd/ricochet/key"
 	"github.com/grik-ai/ricochet-task/cmd/ricochet/ricochet_task"
+	"github.com/grik-ai/ricochet-task/cmd/tasks"
+	"github.com/grik-ai/ricochet-task/cmd/workflows"
 	"github.com/grik-ai/ricochet-task/pkg/ui"
 	"github.com/spf13/cobra"
 )
@@ -51,10 +57,16 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&interactiveMode, "interactive", "i", false, "Запустить в интерактивном режиме")
 
 	// Подкоманды
+	rootCmd.AddCommand(board.BoardCmd)
+	rootCmd.AddCommand(contextcmd.ContextCmd)
+	rootCmd.AddCommand(mcpcmd.MCPCmd)
+	rootCmd.AddCommand(providers.ProvidersCmd)
 	rootCmd.AddCommand(chain.ChainCmd)
 	rootCmd.AddCommand(checkpoint.CheckpointCmd)
 	rootCmd.AddCommand(key.KeyCmd)
 	rootCmd.AddCommand(ricochet_task.TaskCmd)
+	rootCmd.AddCommand(tasks.TasksCmd)  // Подключаем полнофункциональные команды задач
+	rootCmd.AddCommand(workflows.WorkflowCmd)
 
 	// Подкоманды для ключей API
 	key.KeyCmd.AddCommand(&cobra.Command{
@@ -203,26 +215,6 @@ func init() {
 	})
 }
 
-// Команда для инициализации
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Инициализировать конфигурацию Ricochet",
-	Run: func(cmd *cobra.Command, args []string) {
-		if interactiveMode {
-			// Используем интерактивный режим
-			if err := ui.HandleInitProject(); err != nil {
-				fmt.Fprintf(os.Stderr, "Ошибка при инициализации: %v\n", err)
-				os.Exit(1)
-			}
-			return
-		}
-
-		// Неинтерактивный режим
-		ui.PrintInfo("Инициализация проекта Ricochet...")
-		// TODO: Реализовать инициализацию
-		ui.PrintSuccess("Проект успешно инициализирован!")
-	},
-}
 
 // Команда для управления ключами API
 var keyCmd = &cobra.Command{

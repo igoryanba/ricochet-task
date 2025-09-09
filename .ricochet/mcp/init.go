@@ -1,3 +1,6 @@
+//go:build ricochet_ignore
+// +build ricochet_ignore
+
 package mcp
 
 import (

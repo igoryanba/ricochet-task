@@ -5,16 +5,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"log"
 
 	"github.com/grik-ai/ricochet-task/cmd/ricochet"
 	"github.com/grik-ai/ricochet-task/pkg/api"
 	"github.com/grik-ai/ricochet-task/pkg/chain"
 	"github.com/grik-ai/ricochet-task/pkg/checkpoint"
+	"github.com/grik-ai/ricochet-task/pkg/httpserver"
 	"github.com/grik-ai/ricochet-task/pkg/key"
 	"github.com/grik-ai/ricochet-task/pkg/mcp"
 	"github.com/grik-ai/ricochet-task/pkg/model"
 	"github.com/grik-ai/ricochet-task/pkg/orchestrator"
 	"github.com/grik-ai/ricochet-task/pkg/task"
+
+	mcputils "github.com/grik-ai/ricochet-task/.ricochet/mcp"
 )
 
 // Config представляет конфигурацию приложения
@@ -22,16 +26,39 @@ type Config struct {
 	ConfigDir     string
 	DefaultChain  string
 	WorkspacePath string
+	// PostgreSQL configuration
+	PostgresDSN   string
+	// MinIO configuration
+	MinIOEndpoint        string
+	MinIOAccessKey       string
+	MinIOSecretKey       string
+	MinIOBucket          string
+	MinIOUseSSL          bool
 }
 
 // Загрузка конфигурации
 func loadConfig() (*Config, error) {
-	// Пока упрощенная реализация
 	return &Config{
-		ConfigDir:     "",
-		DefaultChain:  "default",
-		WorkspacePath: "./",
+		ConfigDir:     os.Getenv("RICOCHET_CONFIG_DIR"),
+		DefaultChain:  getEnvWithDefault("RICOCHET_DEFAULT_CHAIN", "default"),
+		WorkspacePath: getEnvWithDefault("RICOCHET_WORKSPACE_PATH", "./"),
+		// PostgreSQL configuration
+		PostgresDSN:   os.Getenv("POSTGRES_DSN"),
+		// MinIO configuration
+		MinIOEndpoint:  os.Getenv("MINIO_ENDPOINT"),
+		MinIOAccessKey: os.Getenv("MINIO_ACCESS_KEY"),
+		MinIOSecretKey: os.Getenv("MINIO_SECRET_KEY"),
+		MinIOBucket:    getEnvWithDefault("MINIO_BUCKET", "ricochet-checkpoints"),
+		MinIOUseSSL:    os.Getenv("MINIO_USE_SSL") == "true",
 	}, nil
+}
+
+// getEnvWithDefault возвращает значение переменной окружения или значение по умолчанию
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 // KeyStoreAdapter адаптер для приведения FileKeyStore к интерфейсу key.Store
@@ -78,6 +105,15 @@ func (a *KeyStoreAdapter) Save(k key.Key) error {
 }
 
 func main() {
+	// Проверяем если нужен HTTP сервер через аргументы
+	for _, arg := range os.Args {
+		if arg == "-http" || arg == "--http" {
+			log.Println("Starting Ricochet HTTP server...")
+			httpserver.StartRicochetHTTPServer()
+			return // HTTP сервер блокирует выполнение
+		}
+	}
+
 	// Инициализируем конфигурацию
 	cfg, err := loadConfig()
 	if err != nil {
@@ -112,16 +148,59 @@ func main() {
 	// Оборачиваем FileKeyStore в адаптер, реализующий интерфейс key.Store
 	keyStore := &KeyStoreAdapter{FileKeyStore: fileKeyStore}
 
-	chainStore, err := chain.NewFileChainStore(configDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Ошибка инициализации хранилища цепочек: %v\n", err)
-		os.Exit(1)
+	// Инициализируем хранилище цепочек (PostgreSQL или файловая система)
+	var chainStore chain.Store
+	if cfg.PostgresDSN != "" {
+		log.Printf("Инициализация PostgreSQL хранилища цепочек...")
+		postgresChainStore, err := chain.NewPostgresChainStore(cfg.PostgresDSN)
+		if err != nil {
+			log.Printf("Ошибка инициализации PostgreSQL хранилища цепочек: %v. Используем файловое хранилище", err)
+			chainStore, err = chain.NewFileChainStore(configDir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Ошибка инициализации файлового хранилища цепочек: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			chainStore = postgresChainStore
+			log.Printf("PostgreSQL хранилище цепочек инициализировано")
+		}
+	} else {
+		chainStore, err = chain.NewFileChainStore(configDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Ошибка инициализации файлового хранилища цепочек: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
-	checkpointStore, err := checkpoint.NewFileCheckpointStore(configDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Ошибка инициализации хранилища чекпоинтов: %v\n", err)
-		os.Exit(1)
+	// Инициализируем хранилище чекпоинтов (MinIO или файловая система)
+	var checkpointStore checkpoint.Store
+	if cfg.MinIOEndpoint != "" && cfg.MinIOAccessKey != "" && cfg.MinIOSecretKey != "" {
+		log.Printf("Инициализация MinIO хранилища чекпоинтов...")
+		minioConfig := checkpoint.MinIOConfig{
+			Endpoint:        cfg.MinIOEndpoint,
+			AccessKeyID:     cfg.MinIOAccessKey,
+			SecretAccessKey: cfg.MinIOSecretKey,
+			UseSSL:          cfg.MinIOUseSSL,
+			BucketName:      cfg.MinIOBucket,
+		}
+		minioCheckpointStore, err := checkpoint.NewMinIOCheckpointStore(minioConfig)
+		if err != nil {
+			log.Printf("Ошибка инициализации MinIO хранилища чекпоинтов: %v. Используем файловое хранилище", err)
+			checkpointStore, err = checkpoint.NewFileCheckpointStore(configDir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Ошибка инициализации файлового хранилища чекпоинтов: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			checkpointStore = minioCheckpointStore
+			log.Printf("MinIO хранилище чекпоинтов инициализировано")
+		}
+	} else {
+		checkpointStore, err = checkpoint.NewFileCheckpointStore(configDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Ошибка инициализации файлового хранилища чекпоинтов: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	taskStore, err := task.NewFileTaskStore(configDir)
@@ -164,16 +243,50 @@ func main() {
 		task.DefaultExecutorConfig(),
 	)
 
-	// Инициализируем оркестратор
-	orchestratorImpl := orchestrator.NewOrchestrator(
-		apiClient,
-		keyStore,
-		chainStore,
-		checkpointStore,
-		taskManager,
-		taskExecutor,
-		modelFactory,
-	)
+	// Инициализируем оркестратор с PostgreSQL хранилищем для метаданных запусков
+	var orchestratorImpl orchestrator.Orchestrator
+	if cfg.PostgresDSN != "" {
+		log.Printf("Инициализация PostgreSQL хранилища метаданных запусков...")
+		postgresRunStore, err := orchestrator.NewPostgresRunStore(cfg.PostgresDSN)
+		if err != nil {
+			log.Printf("Ошибка инициализации PostgreSQL хранилища метаданных: %v. Используем in-memory хранилище", err)
+			orchestratorImpl = orchestrator.NewOrchestrator(
+				apiClient,
+				keyStore,
+				chainStore,
+				checkpointStore,
+				taskManager,
+				taskExecutor,
+				modelFactory,
+			)
+		} else {
+			orchestratorImpl = orchestrator.NewOrchestratorWithPostgres(
+				apiClient,
+				keyStore,
+				chainStore,
+				checkpointStore,
+				taskManager,
+				taskExecutor,
+				modelFactory,
+				postgresRunStore,
+			)
+			log.Printf("PostgreSQL хранилище метаданных запусков инициализировано")
+		}
+	} else {
+		orchestratorImpl = orchestrator.NewOrchestrator(
+			apiClient,
+			keyStore,
+			chainStore,
+			checkpointStore,
+			taskManager,
+			taskExecutor,
+			modelFactory,
+		)
+	}
+
+	// Устанавливаем глобальные сервисы для MCP
+	mcputils.SetOrchestratorService(orchestratorImpl)
+	mcputils.SetChainStore(chainStore)
 
 	// Инициализируем интеграцию с MCP
 	mcpIntegration := mcp.NewMCPIntegration("", cfg.DefaultChain)

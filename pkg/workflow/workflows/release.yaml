@@ -1,0 +1,364 @@
+name: release
+description: Complete release workflow with automated testing and deployment
+version: "1.0.0"
+
+variables:
+  release_branch: "release/v${version}"
+  staging_required: true
+  manual_testing: true
+  rollback_plan: true
+
+settings:
+  max_concurrency: 5
+  default_timeout: 72h
+  ai_enabled: true
+  log_level: info
+  retry_policy:
+    max_retries: 3
+    backoff_min: 15m
+    backoff_max: 2h
+
+triggers:
+  - type: ai_plan_created
+    conditions:
+      project_type: release
+      version_type: ["major", "minor", "patch"]
+    actions:
+      - create_release_branch
+      - generate_changelog
+
+  - type: git_tag_created
+    conditions:
+      tag_matches: "v*"
+    actions:
+      - start_release_pipeline
+
+stages:
+  preparation:
+    name: "Release Preparation"
+    dependencies: []
+    auto_assign:
+      strategy: skills_based
+      skills: ["release-management", "devops"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "release_branch_created eq true"
+        - "changelog_generated eq true"
+        - "version_bumped eq true"
+      required: true
+    actions:
+      - type: git
+        parameters:
+          action: create_branch
+          branch_name: "${workflow.variables.release_branch}"
+          repository: "${event.data.repository}"
+
+      - type: task
+        parameters:
+          action: create
+          title: "Generate Changelog"
+          description: "Generate changelog from commit history and PRs"
+          priority: high
+          labels: ["release", "documentation"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Version Bump"
+          description: "Update version numbers in all relevant files"
+          priority: high
+          labels: ["release", "versioning"]
+
+      - type: ai_analysis
+        parameters:
+          action: impact_analysis
+          scope: "full_release"
+          focus: ["breaking_changes", "dependencies", "migration"]
+
+  testing:
+    name: "Comprehensive Testing"
+    dependencies: ["preparation"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["testing", "qa", "automation"]
+      max_load: 4
+    completion:
+      trigger: condition
+      conditions:
+        - "all_tests_passed eq true"
+        - "performance_tests_passed eq true"
+        - "security_tests_passed eq true"
+      required: true
+    timeout: 48h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Full Test Suite"
+          description: "Run complete test suite including unit, integration, e2e"
+          priority: critical
+          labels: ["testing", "automation"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Performance Testing"
+          description: "Load testing and performance benchmarks"
+          priority: high
+          labels: ["testing", "performance"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Security Testing"
+          description: "Security vulnerability scans and penetration testing"
+          priority: critical
+          labels: ["testing", "security"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Compatibility Testing"
+          description: "Test backward/forward compatibility"
+          priority: high
+          labels: ["testing", "compatibility"]
+
+  staging:
+    name: "Staging Deployment"
+    dependencies: ["testing"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["devops", "deployment"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "staging_deployed eq true"
+        - "staging_verified eq true"
+      required: true
+    conditions:
+      - field: "workflow.variables.staging_required"
+        operator: eq
+        value: true
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Deploy to Staging"
+          description: "Deploy release candidate to staging environment"
+          priority: critical
+          labels: ["deployment", "staging"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Staging Verification"
+          description: "Verify staging deployment and run smoke tests"
+          priority: high
+          labels: ["testing", "verification"]
+
+      - type: notification
+        parameters:
+          type: info
+          title: "Staging Ready for Testing"
+          message: "Release ${event.data.version} deployed to staging"
+          recipients: ["@qa-team", "@stakeholders"]
+          channel: slack
+
+  manual_testing:
+    name: "Manual Testing & QA"
+    dependencies: ["staging"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["qa", "manual-testing"]
+      max_load: 3
+    completion:
+      trigger: condition
+      conditions:
+        - "manual_testing_complete eq true"
+        - "user_acceptance_passed eq true"
+      required: true
+    timeout: 24h
+    conditions:
+      - field: "workflow.variables.manual_testing"
+        operator: eq
+        value: true
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Manual Testing"
+          description: "Manual testing of key user journeys"
+          priority: high
+          labels: ["testing", "manual", "qa"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "User Acceptance Testing"
+          description: "Stakeholder approval and user acceptance"
+          priority: high
+          labels: ["testing", "acceptance"]
+
+  documentation:
+    name: "Release Documentation"
+    dependencies: ["preparation"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["documentation", "technical-writing"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "release_notes_complete eq true"
+        - "documentation_updated eq true"
+      required: true
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Release Notes"
+          description: "Finalize release notes and migration guide"
+          priority: high
+          labels: ["documentation", "release"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Update Documentation"
+          description: "Update API docs, user guides, and technical docs"
+          priority: medium
+          labels: ["documentation", "update"]
+
+      - type: ai_analysis
+        parameters:
+          action: documentation_review
+          scope: "release_docs"
+          focus: ["completeness", "clarity", "accuracy"]
+
+  approval:
+    name: "Release Approval"
+    dependencies: ["manual_testing", "documentation"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["release-manager", "product-owner"]
+      max_load: 1
+    completion:
+      trigger: manual
+      required: true
+    timeout: 12h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Release Sign-off"
+          description: "Final approval from stakeholders for production release"
+          priority: critical
+          labels: ["approval", "release"]
+
+      - type: notification
+        parameters:
+          type: urgent
+          title: "Release Approval Required"
+          message: "Release ${event.data.version} ready for production approval"
+          recipients: ["@release-managers", "@product-owners"]
+          channel: slack
+
+  production:
+    name: "Production Deployment"
+    dependencies: ["approval"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["devops", "sre", "release-manager"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "production_deployed eq true"
+        - "post_deploy_checks_passed eq true"
+      required: true
+    timeout: 4h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Production Deployment"
+          description: "Deploy to production with rollback plan"
+          priority: critical
+          labels: ["deployment", "production"]
+
+      - type: task
+        parameters:
+          action: create
+          title: "Post-Deployment Verification"
+          description: "Verify production deployment and monitor metrics"
+          priority: critical
+          labels: ["monitoring", "verification"]
+
+      - type: git
+        parameters:
+          action: create_tag
+          tag_name: "v${event.data.version}"
+          repository: "${event.data.repository}"
+
+      - type: notification
+        parameters:
+          type: success
+          title: "Production Release Complete"
+          message: "🎉 Version ${event.data.version} successfully deployed to production!"
+          recipients: ["@all"]
+          channel: general
+
+  monitoring:
+    name: "Post-Release Monitoring"
+    dependencies: ["production"]
+    auto_assign:
+      strategy: skills_based
+      skills: ["sre", "monitoring", "devops"]
+      max_load: 2
+    completion:
+      trigger: condition
+      conditions:
+        - "monitoring_stable eq true"
+        - "older_than('2h')"
+      required: false
+    timeout: 24h
+    actions:
+      - type: task
+        parameters:
+          action: create
+          title: "Release Monitoring"
+          description: "Monitor production metrics and user feedback"
+          priority: high
+          labels: ["monitoring", "post-release"]
+
+      - type: notification
+        parameters:
+          type: info
+          title: "Release Monitoring Active"
+          message: "Monitoring production stability for release ${event.data.version}"
+          recipients: ["@sre-team"]
+          channel: monitoring
+
+notifications:
+  - event: stage_start
+    channels: ["slack"]
+    template: "release_stage_start"
+    users: ["${stage.assignee}", "@release-team"]
+
+  - event: stage_failed
+    channels: ["slack", "email", "pagerduty"]
+    template: "release_stage_failed"
+    users: ["@release-managers", "@sre-team"]
+
+  - event: production_deployed
+    channels: ["slack", "email"]
+    template: "release_deployed"
+    users: ["@all"]
+
+  - event: rollback_initiated
+    channels: ["slack", "phone", "pagerduty"]
+    template: "release_rollback"
+    users: ["@incident-response", "@release-managers"]

@@ -155,6 +155,37 @@ func (s *FileKeyStore) Delete(id string) error {
 	return saveKeys(s.path, newKeys)
 }
 
+// Save сохраняет ключ (алиас для Add/Update)
+func (s *FileKeyStore) Save(key Key) error {
+	if s.Exists(key.ID) {
+		return s.Update(key)
+	}
+	return s.Add(key)
+}
+
+// Exists проверяет существование ключа
+func (s *FileKeyStore) Exists(id string) bool {
+	_, err := s.Get(id)
+	return err == nil
+}
+
+// GetByProvider возвращает список ключей для указанного провайдера
+func (s *FileKeyStore) GetByProvider(provider string) ([]Key, error) {
+	keys, err := s.List()
+	if err != nil {
+		return nil, err
+	}
+
+	var providerKeys []Key
+	for _, key := range keys {
+		if key.Provider == provider {
+			providerKeys = append(providerKeys, key)
+		}
+	}
+
+	return providerKeys, nil
+}
+
 // loadKeys загружает ключи из файла
 func loadKeys(path string) ([]Key, error) {
 	data, err := os.ReadFile(path)

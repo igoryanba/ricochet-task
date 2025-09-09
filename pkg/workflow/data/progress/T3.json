@@ -1,0 +1,9 @@
+{
+  "task_id": "T3",
+  "current_stage": "testing",
+  "completed_stages": null,
+  "progress_percent": 80,
+  "last_activity": "0001-01-01T00:00:00Z",
+  "git_activity": null,
+  "metrics": null
+}

@@ -3,6 +3,7 @@ package mcp
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -28,15 +29,6 @@ type ChainInteractiveBuilderResponse struct {
 	Message       string    `json:"message,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
-}
-
-// ModelOption представляет опцию выбора модели
-type ModelOption struct {
-	ID       string `json:"id"`
-	Provider string `json:"provider"`
-	Name     string `json:"name"`
-	Role     string `json:"role,omitempty"`
-	Details  string `json:"details,omitempty"`
 }
 
 // ModelSelectionResponse ответ на запрос списка доступных моделей
@@ -226,49 +218,57 @@ func HandleChainGetAvailableModels(params json.RawMessage) (interface{}, error) 
 		return nil, fmt.Errorf("неверные параметры для получения моделей: %v", err)
 	}
 
-	// TODO: Получить список доступных моделей с учетом роли
-	// Временная реализация
-	models := []ModelOption{
-		{
-			ID:       "gpt-4-turbo",
-			Provider: "openai",
-			Name:     "GPT-4 Turbo",
-			Details:  "Мощная модель для общих задач",
-		},
-		{
-			ID:       "claude-3-opus",
-			Provider: "anthropic",
-			Name:     "Claude 3 Opus",
-			Details:  "Модель высокого качества для анализа текста",
-		},
-		{
-			ID:       "claude-3-sonnet",
-			Provider: "anthropic",
-			Name:     "Claude 3 Sonnet",
-			Details:  "Сбалансированная модель по цене и качеству",
-		},
-		{
-			ID:       "deepseek-coder",
-			Provider: "deepseek",
-			Name:     "DeepSeek Coder",
-			Details:  "Модель для работы с кодом",
-		},
+	// Получаем менеджер моделей
+	mm, err := getModelManager()
+	if err != nil {
+		return nil, fmt.Errorf("не удалось получить менеджер моделей: %v", err)
 	}
 
-	// Если указана роль, добавляем рекомендации для этой роли
-	if modelParams.Role != "" {
-		for i := range models {
-			if (models[i].ID == "claude-3-opus" && modelParams.Role == "analyzer") ||
-				(models[i].ID == "deepseek-coder" && modelParams.Role == "coder") ||
-				(models[i].ID == "claude-3-sonnet" && modelParams.Role == "summarizer") {
-				models[i].Role = modelParams.Role
-			}
+	// Получаем все доступные роли
+	mmRoles := mm.GetAvailableRoles()
+
+	// Собираем уникальные модели (ключ provider:modelID)
+	modelMap := make(map[string]ModelOption)
+
+	for _, r := range mmRoles {
+		// Фильтр по роли, если указан
+		if modelParams.Role != "" && r.ID != modelParams.Role {
+			continue
+		}
+
+		if r.Provider == "" || r.ModelID == "" {
+			continue
+		}
+
+		key := fmt.Sprintf("%s:%s", r.Provider, r.ModelID)
+		if _, ok := modelMap[key]; ok {
+			continue
+		}
+
+		modelMap[key] = ModelOption{
+			Provider:    r.Provider,
+			ModelID:     r.ModelID,
+			DisplayName: r.DisplayName,
+			Description: r.Description,
+			// Прочие поля оставить нулевыми, т.к. их нет в ModelRole
 		}
 	}
 
-	return ModelSelectionResponse{
-		Models: models,
-	}, nil
+	// Преобразуем карту в срез
+	models := make([]ModelOption, 0, len(modelMap))
+	for _, m := range modelMap {
+		models = append(models, m)
+	}
+
+	// Сортируем по провайдеру + DisplayName
+	sort.Slice(models, func(i, j int) bool {
+		if models[i].Provider == models[j].Provider {
+			return models[i].DisplayName < models[j].DisplayName
+		}
+		return models[i].Provider < models[j].Provider
+	})
+
+	return ModelSelectionResponse{Models: models}, nil
 }
 
 // HandleChainSaveInteractive обрабатывает запрос на сохранение цепочки из интерактивного конструктора
@@ -361,37 +361,17 @@ func getModelsPlaceholder(count int) string {
 		return `<div class="empty-state">Нет моделей. Нажмите "Добавить модель", чтобы начать.</div>`
 	}
 
-	// Примеры моделей для UI
-	modelTemplates := []string{
-		`<div class="model-item" data-position="0">
-      <div class="model-header">Анализатор (Claude 3 Opus)</div>
-      <div class="model-actions">
-        <button class="edit-model-btn">✎</button>
-        <button class="remove-model-btn">✕</button>
-      </div>
-    </div>`,
-		`<div class="model-item" data-position="1">
-      <div class="model-header">Суммаризатор (GPT-4)</div>
-      <div class="model-actions">
-        <button class="edit-model-btn">✎</button>
-        <button class="remove-model-btn">✕</button>
-      </div>
-    </div>`,
-		`<div class="model-item" data-position="2">
-      <div class="model-header">Интегратор (DeepSeek Coder)</div>
-      <div class="model-actions">
-        <button class="edit-model-btn">✎</button>
-        <button class="remove-model-btn">✕</button>
-      </div>
-    </div>`,
+	placeholder := ""
+	for i := 0; i < count; i++ {
+		placeholder += fmt.Sprintf(`<div class="model-item" data-position="%d">
+			<div class="model-header">Модель #%d</div>
+			<div class="model-actions">
+			  <button class="edit-model-btn">✎</button>
+			  <button class="remove-model-btn">✕</button>
+			</div>
+		  </div>`, i, i+1)
 	}
-
-	// Возвращаем заполнители для указанного количества моделей
-	result := ""
-	for i := 0; i < count && i < len(modelTemplates); i++ {
-		result += modelTemplates[i]
-	}
-	return result
+	return placeholder
 }
 
 // getMermaidModels возвращает представление моделей для Mermaid-диаграммы
@@ -399,29 +379,15 @@ func getMermaidModels(count int) string {
 	if count <= 0 {
 		return "    empty[\"Нет моделей\"]"
 	}
-
-	// Примеры моделей для Mermaid
-	models := []string{
-		"    analyzer[\"Анализатор (Claude 3 Opus)\"]",
-		"    summarizer[\"Суммаризатор (GPT-4)\"]",
-		"    integrator[\"Интегратор (DeepSeek Coder)\"]",
+	nodes := ""
+	links := ""
+	for i := 0; i < count; i++ {
+		nodes += fmt.Sprintf("    model%d[\"Модель %d\"]\n", i, i+1)
+		if i < count-1 {
+			links += fmt.Sprintf("    model%d --> model%d\n", i, i+1)
+		}
 	}
-
-	// Связи между моделями
-	links := []string{
-		"    analyzer --> summarizer",
-		"    summarizer --> integrator",
-	}
-
-	// Возвращаем модели и связи для указанного количества моделей
-	result := ""
-	for i := 0; i < count && i < len(models); i++ {
-		result += models[i] + "\n"
-	}
-	for i := 0; i < count-1 && i < len(links); i++ {
-		result += links[i] + "\n"
-	}
-	return result
+	return nodes + links
 }
 
 // getTextModels возвращает текстовое представление моделей
@@ -429,18 +395,9 @@ func getTextModels(count int) string {
 	if count <= 0 {
 		return "Нет моделей в цепочке"
 	}
-
-	// Примеры моделей для текстового представления
-	models := []string{
-		"1. Анализатор (Claude 3 Opus)",
-		"2. Суммаризатор (GPT-4)",
-		"3. Интегратор (DeepSeek Coder)",
+	text := ""
+	for i := 0; i < count; i++ {
+		text += fmt.Sprintf("%d. Модель %d\n", i+1, i+1)
 	}
-
-	// Возвращаем текстовое представление для указанного количества моделей
-	result := ""
-	for i := 0; i < count && i < len(models); i++ {
-		result += models[i] + "\n"
-	}
-	return result
+	return text
 }

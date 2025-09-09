@@ -1,0 +1,58 @@
+{
+  "task_id": "123",
+  "current_stage": "development",
+  "completed_stages": [],
+  "progress_percent": 80,
+  "last_activity": "2025-08-20T16:49:16.045976+05:00",
+  "git_activity": [
+    {
+      "type": "push",
+      "sha": "abc123",
+      "message": "feat: implement task #123 - new feature",
+      "author": "developer1",
+      "timestamp": "2025-08-17T23:32:50.873755+05:00",
+      "files_count": 2,
+      "lines_added": 50,
+      "lines_deleted": 10
+    },
+    {
+      "type": "push",
+      "sha": "abc123",
+      "message": "feat: implement task #123 - new feature",
+      "author": "developer1",
+      "timestamp": "2025-08-18T08:19:08.214389+05:00",
+      "files_count": 2,
+      "lines_added": 50,
+      "lines_deleted": 10
+    },
+    {
+      "type": "push",
+      "sha": "abc123",
+      "message": "feat: implement task #123 - new feature",
+      "author": "developer1",
+      "timestamp": "2025-08-19T22:56:00.066848+05:00",
+      "files_count": 2,
+      "lines_added": 50,
+      "lines_deleted": 10
+    },
+    {
+      "type": "push",
+      "sha": "abc123",
+      "message": "feat: implement task #123 - new feature",
+      "author": "developer1",
+      "timestamp": "2025-08-20T16:49:16.045975+05:00",
+      "files_count": 2,
+      "lines_added": 50,
+      "lines_deleted": 10
+    }
+  ],
+  "metrics": {
+    "total_commits": 4,
+    "total_lines_added": 200,
+    "total_lines_deleted": 40,
+    "files_modified": 8,
+    "average_commit_size": 60,
+    "development_velocity": 88.24386578990759,
+    "last_commit_date": "2025-08-20T16:49:16.045975+05:00"
+  }
+}

@@ -59,8 +59,30 @@ func HandleChainCreate(params json.RawMessage) (interface{}, error) {
 	// и сохранение её в хранилище
 
 	// Это демонстрационный пример, создающий фиктивную цепочку
-	chainID := fmt.Sprintf("chain-%d", time.Now().Unix())
+	chainID := fmt.Sprintf("chain-%d", time.Now().UnixNano())
 	createdAt := time.Now()
+
+	// Подготавливаем структуру для хранилища
+	storedSteps := make([]StoredStep, 0, len(p.Steps))
+	for i, s := range p.Steps {
+		stepID := fmt.Sprintf("step-%d", i)
+		storedSteps = append(storedSteps, StoredStep{
+			ID:            stepID,
+			Name:          s.Name,
+			Type:          "", // Тип можно определить позже
+			RoleID:        s.RoleID,
+			ModelProvider: s.Provider,
+			ModelID:       s.ModelID,
+		})
+	}
+
+	// Сохраняем цепочку в in-memory хранилище
+	_ = saveChain(Chain{
+		ID:          chainID,
+		Name:        p.Name,
+		Description: p.Description,
+		Steps:       storedSteps,
+	})
 
 	// Если запрошено интерактивное создание, возвращаем промежуточный ответ
 	if p.Interactive {

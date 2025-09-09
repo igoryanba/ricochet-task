@@ -1,0 +1,97 @@
+{
+  "task_id": "456",
+  "current_stage": "development",
+  "completed_stages": [
+    "development",
+    "code_review"
+  ],
+  "progress_percent": 90,
+  "last_activity": "2025-08-20T16:49:16.048857+05:00",
+  "git_activity": [
+    {
+      "type": "pull_request",
+      "message": "PR: Implement feature #456",
+      "author": "developer2",
+      "timestamp": "2025-08-17T23:32:50.874428+05:00",
+      "files_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0
+    },
+    {
+      "type": "push",
+      "sha": "def456",
+      "message": "fix: resolve issue #456",
+      "author": "developer2",
+      "timestamp": "2025-08-17T23:32:50.875283+05:00",
+      "files_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0
+    },
+    {
+      "type": "pull_request",
+      "message": "PR: Implement feature #456",
+      "author": "developer2",
+      "timestamp": "2025-08-18T08:19:08.21531+05:00",
+      "files_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0
+    },
+    {
+      "type": "push",
+      "sha": "def456",
+      "message": "fix: resolve issue #456",
+      "author": "developer2",
+      "timestamp": "2025-08-18T08:19:08.216389+05:00",
+      "files_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0
+    },
+    {
+      "type": "pull_request",
+      "message": "PR: Implement feature #456",
+      "author": "developer2",
+      "timestamp": "2025-08-19T22:56:00.067306+05:00",
+      "files_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0
+    },
+    {
+      "type": "push",
+      "sha": "def456",
+      "message": "fix: resolve issue #456",
+      "author": "developer2",
+      "timestamp": "2025-08-19T22:56:00.068937+05:00",
+      "files_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0
+    },
+    {
+      "type": "pull_request",
+      "message": "PR: Implement feature #456",
+      "author": "developer2",
+      "timestamp": "2025-08-20T16:49:16.046757+05:00",
+      "files_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0
+    },
+    {
+      "type": "push",
+      "sha": "def456",
+      "message": "fix: resolve issue #456",
+      "author": "developer2",
+      "timestamp": "2025-08-20T16:49:16.048857+05:00",
+      "files_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0
+    }
+  ],
+  "metrics": {
+    "total_commits": 4,
+    "total_lines_added": 0,
+    "total_lines_deleted": 0,
+    "files_modified": 0,
+    "average_commit_size": 0,
+    "development_velocity": 0,
+    "last_commit_date": "2025-08-20T16:49:16.048857+05:00"
+  }
+}

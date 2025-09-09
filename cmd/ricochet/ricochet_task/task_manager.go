@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/grik-ai/ricochet-task/internal/config"
 	"github.com/grik-ai/ricochet-task/pkg/chain"
 	"github.com/grik-ai/ricochet-task/pkg/task"
 	"github.com/grik-ai/ricochet-task/pkg/ui"
+	"github.com/grik-ai/ricochet-task/internal/config"
 	"github.com/spf13/cobra"
 )
 

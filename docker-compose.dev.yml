@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: ricochet-postgres
+    environment:
+      POSTGRES_USER: ricochet
+      POSTGRES_PASSWORD: ricochet_dev_password
+      POSTGRES_DB: ricochet_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ricochet -d ricochet_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: ricochet-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin_dev_password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: MinIO client for bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: ricochet-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set minio http://minio:9000 minioadmin minioadmin_dev_password;
+      mc mb minio/ricochet-checkpoints --ignore-existing;
+      mc policy set public minio/ricochet-checkpoints;
+      echo 'MinIO bucket initialized successfully';
+      "
+
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  default:
+    name: ricochet-dev-network

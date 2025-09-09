@@ -1,0 +1,29 @@
+name: ingest-summarize-tasks
+version: 1
+steps:
+  - id: load_segments
+    action: load_checkpoints
+    args:
+      type: segment
+  - id: chunk
+    action: split_text
+    args:
+      chunk_size: 4000
+      overlap: 300
+  - id: summarize
+    action: llm_summarize
+    args:
+      model: claude-3-sonnet
+      prompt: |
+        You are a senior architect. Summarize the input into key sections and bullet points.
+  - id: extract_tasks
+    action: llm_extract_tasks
+    args:
+      model: claude-3-sonnet
+      prompt: |
+        From the summary, extract actionable tasks (title, type, priority). Output JSON.
+  - id: create_tasks
+    action: create_provider_tasks
+    args:
+      provider: youtrack
+      project: "0-1"

@@ -70,7 +70,7 @@ func HandleChainMonitor(params json.RawMessage) (interface{}, error) {
 	}
 
 	// Получить информацию о цепочке и текущий статус выполнения
-	chainInfo, err := getChainInfo(monitorParams.ChainID)
+	chainInfo, err := getChainBasicInfo(monitorParams.ChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func HandleChainMonitor(params json.RawMessage) (interface{}, error) {
 		UpdateTime: time.Now(),
 	}
 
-	// Если цепочка в процессе выполнения, создать и зарегистрировать потоковую сессию
+	// Если цепочка в процессе выполнения, создаём и регистрируем потоковую сессию
 	if isChainRunning(monitorParams.ChainID) {
 		go monitorChainExecution(monitorParams)
 	}
@@ -133,11 +133,15 @@ func RegisterChainMonitorCommands(server *MCPServer) {
 
 // Вспомогательные функции
 
-// getChainInfo получает информацию о цепочке
-func getChainInfo(chainID string) (struct{ Name string }, error) {
-	// TODO: Получить информацию о цепочке из хранилища
-	// Временная реализация
-	return struct{ Name string }{Name: "Chain " + chainID}, nil
+// getChainBasicInfo получает базовую информацию о цепочке
+func getChainBasicInfo(chainID string) (struct{ Name string }, error) {
+	// Используем функцию из mcp_utils.go
+	info, err := getChainInfo(chainID)
+	if err != nil {
+		// Fallback
+		return struct{ Name string }{Name: "Chain " + chainID}, nil
+	}
+	return struct{ Name string }{Name: info.Name}, nil
 }
 
 // getChainStatus получает текущий статус цепочки
@@ -197,8 +201,58 @@ func generateChainVisualization(chainID string) string {
 
 // monitorChainExecution запускает мониторинг выполнения цепочки
 func monitorChainExecution(params ChainMonitorParams) {
-	// TODO: Реализовать потоковый мониторинг цепочки с обновлениями в реальном времени
-	// Временная реализация
+	chainID := params.ChainID
+	refresh := time.Duration(params.RefreshRate) * time.Millisecond
+
+	// Создаём канал для стрима и регистрируем его
+	updateCh := make(chan ChainMonitorStreamResponse, 16)
+	chainMonitorSessions.mutex.Lock()
+	chainMonitorSessions.sessions[chainID] = updateCh
+	chainMonitorSessions.mutex.Unlock()
+
+	defer func() {
+		// По завершении удаляем сессию
+		chainMonitorSessions.mutex.Lock()
+		delete(chainMonitorSessions.sessions, chainID)
+		chainMonitorSessions.mutex.Unlock()
+		close(updateCh)
+	}()
+
+	ticker := time.NewTicker(refresh)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			status := getChainStatus(chainID)
+			viz := generateChainVisualization(chainID)
+			event := ChainEvent{
+				ID:        fmt.Sprintf("evt-%d", time.Now().UnixNano()),
+				ChainID:   chainID,
+				Type:      "heartbeat",
+				Timestamp: time.Now(),
+				Message:   fmt.Sprintf("chain status: %s", status),
+				Progress:  0, // TODO: заменить на реальный прогресс
+			}
+			resp := ChainMonitorStreamResponse{
+				ChainID:       chainID,
+				Status:        status,
+				Event:         event,
+				Visualization: viz,
+				UpdateTime:    time.Now(),
+			}
+			// Не блокируем, если клиенты не читают
+			select {
+			case updateCh <- resp:
+			default:
+			}
+
+			// Если цепочка завершилась – выходим
+			if status == "completed" || status == "stopped" || status == "error" {
+				return
+			}
+		}
+	}
 }
 
 // stopChainMonitoring останавливает мониторинг цепочки

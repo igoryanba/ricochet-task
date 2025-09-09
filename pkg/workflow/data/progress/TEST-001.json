@@ -1,0 +1,19 @@
+{
+  "task_id": "TEST-001",
+  "current_stage": "development",
+  "completed_stages": [
+    "planning"
+  ],
+  "progress_percent": 25,
+  "last_activity": "2025-08-20T16:49:16.049661+05:00",
+  "git_activity": [],
+  "metrics": {
+    "total_commits": 3,
+    "total_lines_added": 0,
+    "total_lines_deleted": 0,
+    "files_modified": 0,
+    "average_commit_size": 0,
+    "development_velocity": 0,
+    "last_commit_date": "0001-01-01T00:00:00Z"
+  }
+}

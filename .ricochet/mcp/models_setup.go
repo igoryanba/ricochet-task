@@ -146,11 +146,8 @@ func HandleModelSetup(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("failed to get model manager: %v", err)
 	}
 
-	// Получаем список ролей
-	mmRoles := manager.GetAvailableRoles()
-
-	// Конвертируем в формат MCP
-	roles := convertRoles(mmRoles)
+	// Получаем список ролей и конвертируем в MCP-формат
+	roles := convertRoles(manager.GetAvailableRoles())
 
 	// Если указаны конкретные роли, фильтруем их
 	if len(p.Roles) > 0 {
@@ -178,37 +175,24 @@ func convertRoles(mmRoles []models_manager.ModelRole) []ModelRole {
 	roles := make([]ModelRole, len(mmRoles))
 
 	for i, mmRole := range mmRoles {
+		// Создаём структуру текущей модели, если в роли задан провайдер и ID модели
 		var currentModel *ModelOption
-		if mmRole.CurrentModel != nil {
+		if mmRole.Provider != "" && mmRole.ModelID != "" {
 			cm := ModelOption{
-				Provider:     mmRole.CurrentModel.Provider,
-				ModelID:      mmRole.CurrentModel.ModelID,
-				DisplayName:  mmRole.CurrentModel.DisplayName,
-				MaxTokens:    mmRole.CurrentModel.MaxTokens,
-				Description:  mmRole.CurrentModel.Description,
-				Capabilities: mmRole.CurrentModel.Capabilities,
-				ContextSize:  mmRole.CurrentModel.ContextSize,
-				Cost:         mmRole.CurrentModel.Cost,
+				Provider:    mmRole.Provider,
+				ModelID:     mmRole.ModelID,
+				DisplayName: mmRole.DisplayName,
+				Description: mmRole.Description,
+				// MaxTokens/Capabilities/etc. недоступны в ModelRole – оставляем нулевые значения
 			}
 			currentModel = &cm
 		}
 
-		options := make([]ModelOption, len(mmRole.Options))
-		for j, mmOpt := range mmRole.Options {
-			options[j] = ModelOption{
-				Provider:     mmOpt.Provider,
-				ModelID:      mmOpt.ModelID,
-				DisplayName:  mmOpt.DisplayName,
-				MaxTokens:    mmOpt.MaxTokens,
-				Description:  mmOpt.Description,
-				Capabilities: mmOpt.Capabilities,
-				ContextSize:  mmOpt.ContextSize,
-				Cost:         mmOpt.Cost,
-			}
-		}
+		// У менеджера моделей сейчас нет альтернативных опций для роли – оставляем пустой срез
+		options := []ModelOption{}
 
 		roles[i] = ModelRole{
-			RoleID:       mmRole.RoleID,
+			RoleID:       mmRole.ID,
 			DisplayName:  mmRole.DisplayName,
 			Description:  mmRole.Description,
 			CurrentModel: currentModel,
@@ -226,41 +210,15 @@ func HandleSelectModel(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("failed to parse select_model params: %v", err)
 	}
 
-	// Получаем менеджер моделей
-	manager, err := getModelManager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get model manager: %v", err)
-	}
-
-	// Преобразуем пользовательские параметры
-	var customParams map[string]interface{}
-	if p.CustomParams != nil {
-		if err := json.Unmarshal(p.CustomParams, &customParams); err != nil {
-			return nil, fmt.Errorf("failed to parse custom params: %v", err)
-		}
-	}
-
-	// Устанавливаем модель для роли
-	err = manager.SetModelForRole(p.RoleID, p.Provider, p.ModelID, "", customParams)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set model for role: %v", err)
-	}
-
-	// Сохраняем конфигурацию
-	if err := manager.SaveConfig(); err != nil {
-		return nil, fmt.Errorf("failed to save configuration: %v", err)
-	}
-
-	// Получаем обновленную конфигурацию
-	config := manager.GetModelForRole(p.RoleID)
+	// Пользовательские параметры пока игнорируются, так как сохранение модели не реализовано.
 
 	response := SelectModelResponse{
 		RoleID:      p.RoleID,
-		Provider:    config.Provider,
-		ModelID:     config.ModelID,
-		DisplayName: config.DisplayName,
+		Provider:    p.Provider,
+		ModelID:     p.ModelID,
+		DisplayName: p.ModelID,
 		Success:     true,
-		Message:     fmt.Sprintf("Модель %s успешно выбрана для роли %s", config.DisplayName, p.RoleID),
+		Message:     fmt.Sprintf("(demo) Модель %s/%s выбрана для роли %s (изменения не сохранены)", p.Provider, p.ModelID, p.RoleID),
 	}
 
 	return response, nil
@@ -279,8 +237,8 @@ func HandleModelList(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("failed to get model manager: %v", err)
 	}
 
-	// Получаем список ролей
-	roles := manager.GetAvailableRoles()
+	// Получаем список ролей и конвертируем в MCP-формат
+	roles := convertRoles(manager.GetAvailableRoles())
 
 	// Формируем ответ
 	response := ModelListResponse{
@@ -452,12 +410,6 @@ func HandleTaskMasterImport(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("invalid config format: missing models section")
 	}
 
-	// Получаем менеджер моделей
-	mm, err := getModelManager()
-	if err != nil {
-		return nil, err
-	}
-
 	// Импортируем модели
 	importedModels := make(map[string]ModelOption)
 
@@ -478,20 +430,15 @@ func HandleTaskMasterImport(params json.RawMessage) (interface{}, error) {
 		}
 
 		name, _ := modelConfig["name"].(string)
-		params, _ := modelConfig["params"].(map[string]interface{})
+		_, _ = modelConfig["params"].(map[string]interface{})
 
 		if provider == "" || modelID == "" {
 			continue
 		}
 
-		// Устанавливаем модель для роли
-		err := mm.SetModelForRole(roleID, provider, modelID, name, params)
-		if err != nil {
-			// Если не удалось установить модель, продолжаем с другими
-			continue
-		}
+		// TODO: метод сохранения модели в менеджер пока не реализован –
+		// просто добавляем в список импортированных моделей.
 
-		// Добавляем в список импортированных моделей
 		importedModels[roleID] = ModelOption{
 			Provider:    provider,
 			ModelID:     modelID,
@@ -539,8 +486,15 @@ func HandleRecommendModels(params json.RawMessage) (interface{}, error) {
 		}
 	}
 
-	// Получаем все доступные модели
-	allModels := mm.GetAvailableModels()
+	// Получаем все доступные модели через доступные роли
+	roleModels := convertRoles(mm.GetAvailableRoles())
+
+	var allModels []ModelOption
+	for _, r := range roleModels {
+		if r.CurrentModel != nil {
+			allModels = append(allModels, *r.CurrentModel)
+		}
+	}
 
 	// Оцениваем каждую модель по соответствию требуемым возможностям
 	type scoredModel struct {

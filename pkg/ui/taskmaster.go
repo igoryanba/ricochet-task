@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/grik-ai/ricochet-task/internal/config"
 	"github.com/grik-ai/ricochet-task/pkg/chain"
 	"github.com/grik-ai/ricochet-task/pkg/task"
+	"github.com/grik-ai/ricochet-task/internal/config"
 )
 
 // ShowRicochetTaskMenu отображает меню для управления Task Master

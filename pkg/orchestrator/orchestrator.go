@@ -73,6 +73,22 @@ type TaskOutput struct {
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
+// RunStatistics содержит статистику выполнения цепочки
+type RunStatistics struct {
+	TotalRuns          int     `json:"total_runs"`
+	SuccessfulRuns     int     `json:"successful_runs"`
+	FailedRuns         int     `json:"failed_runs"`
+	AverageDuration    int64   `json:"average_duration_ms"`
+	MinDuration        int64   `json:"min_duration_ms"`
+	MaxDuration        int64   `json:"max_duration_ms"`
+	TotalTokensUsed    int     `json:"total_tokens_used"`
+	AverageTokensUsed  int     `json:"average_tokens_used"`
+	EstimatedCost      float64 `json:"estimated_cost"`
+	SuccessRate        float64 `json:"success_rate"`
+	LastRunDate        string  `json:"last_run_date"`
+	LastSuccessfulDate string  `json:"last_successful_date"`
+}
+
 // Orchestrator определяет основной интерфейс оркестратора
 type Orchestrator interface {
 	// RunChain запускает цепочку моделей с указанными входными данными
@@ -95,6 +111,9 @@ type Orchestrator interface {
 
 	// ListCheckpoints возвращает список чекпоинтов для указанного выполнения
 	ListCheckpoints(runID string) ([]checkpoint.Checkpoint, error)
+
+	// GetRunStatistics возвращает статистику выполнения для цепочки
+	GetRunStatistics(chainID string) (*RunStatistics, error)
 }
 
 // Errors

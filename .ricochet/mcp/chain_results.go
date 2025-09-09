@@ -191,8 +191,7 @@ func HandleChainRunResult(params json.RawMessage) (interface{}, error) {
 
 // getChainResults возвращает результаты выполнения цепочки
 func getChainResults(chainID string, runID string, limit int) ([]ChainRunResult, error) {
-	// TODO: Реализовать получение результатов из оркестратора
-	// Временная реализация
+	// Пока возвращаем заглушку - полная реализация требует доработки интерфейсов
 	now := time.Now()
 	results := []ChainRunResult{
 		{
@@ -224,13 +223,25 @@ func getChainResults(chainID string, runID string, limit int) ([]ChainRunResult,
 		},
 	}
 
-	return results, nil
+	// Фильтруем по chainID и runID
+	var filteredResults []ChainRunResult
+	for _, result := range results {
+		if runID == "" || result.RunID == runID {
+			filteredResults = append(filteredResults, result)
+		}
+	}
+
+	// Ограничиваем количество результатов
+	if limit > 0 && len(filteredResults) > limit {
+		filteredResults = filteredResults[:limit]
+	}
+
+	return filteredResults, nil
 }
 
 // getChainRunStats возвращает статистику выполнения цепочки
 func getChainRunStats(chainID string) (*ChainRunStats, error) {
-	// TODO: Реализовать получение статистики из оркестратора
-	// Временная реализация
+	// Временная реализация для завершения MVP
 	stats := &ChainRunStats{
 		TotalRuns:          10,
 		SuccessfulRuns:     8,

@@ -181,17 +181,17 @@ func generateASCIIVisualization(data ChainVisualizationData, params Visualizatio
 	result.WriteString("\n")
 
 	// Модели
-	for i, model := range data.Models {
+	for i := range data.Models {
 		// Создаем строку модели
 		modelBox := fmt.Sprintf("+---------------+\n")
-		modelBox += fmt.Sprintf("| %-13s |\n", model.Role)
-		modelBox += fmt.Sprintf("| (%s)       |\n", model.Provider)
+		modelBox += fmt.Sprintf("| %-13s |\n", data.Models[i].Role)
+		modelBox += fmt.Sprintf("| (%s)       |\n", data.Models[i].Provider)
 
 		// Прогресс-бар
 		if params.ShowProgress {
 			progressStr := ""
 			progressLength := 13
-			filledChars := int(model.Progress * float64(progressLength))
+			filledChars := int(data.Models[i].Progress * float64(progressLength))
 
 			for j := 0; j < progressLength; j++ {
 				if j < filledChars {
@@ -202,7 +202,7 @@ func generateASCIIVisualization(data ChainVisualizationData, params Visualizatio
 			}
 
 			modelBox += fmt.Sprintf("| [%s] |\n", progressStr)
-			modelBox += fmt.Sprintf("| %5.1f%%        |\n", model.Progress*100)
+			modelBox += fmt.Sprintf("| %5.1f%%        |\n", data.Models[i].Progress*100)
 		}
 
 		modelBox += fmt.Sprintf("+---------------+")
@@ -218,7 +218,7 @@ func generateASCIIVisualization(data ChainVisualizationData, params Visualizatio
 	// Детали задач
 	if params.ShowTasks {
 		result.WriteString("\n\nTasks:\n")
-		for i, model := range data.Models {
+		for _, model := range data.Models {
 			result.WriteString(fmt.Sprintf("%s: %d/%d completed\n",
 				model.Role, model.TasksDone, model.TasksTotal))
 		}
@@ -251,7 +251,7 @@ func generateUnicodeVisualization(data ChainVisualizationData, params Visualizat
 	bottomLine := "└─────────────┘"
 	connector := "    ───>    "
 
-	for i, model := range data.Models {
+	for i := range data.Models {
 		if i > 0 {
 			topLine += connector + "┌─────────────┐"
 			modelLine += connector + "│  %s │"
@@ -267,25 +267,25 @@ func generateUnicodeVisualization(data ChainVisualizationData, params Visualizat
 
 	// Выводим строку с ролями моделей
 	roleArgs := make([]interface{}, len(data.Models))
-	for i, model := range data.Models {
-		roleArgs[i] = fitText(model.Role, 9)
+	for i := range data.Models {
+		roleArgs[i] = fitText(data.Models[i].Role, 9)
 	}
 	result.WriteString(fmt.Sprintf(modelLine+"\n", roleArgs...))
 
 	// Выводим строку с провайдерами
 	providerArgs := make([]interface{}, len(data.Models))
-	for i, model := range data.Models {
-		providerArgs[i] = fitText(model.Provider, 7)
+	for i := range data.Models {
+		providerArgs[i] = fitText(data.Models[i].Provider, 7)
 	}
 	result.WriteString(fmt.Sprintf(providerLine+"\n", providerArgs...))
 
 	// Выводим прогресс-бары, если нужно
 	if params.ShowProgress {
 		progressArgs := make([]interface{}, len(data.Models))
-		for i, model := range data.Models {
+		for i := range data.Models {
 			progressBar := ""
 			progressLength := 8
-			filledChars := int(model.Progress * float64(progressLength))
+			filledChars := int(data.Models[i].Progress * float64(progressLength))
 
 			for j := 0; j < progressLength; j++ {
 				if j < filledChars {
@@ -300,8 +300,8 @@ func generateUnicodeVisualization(data ChainVisualizationData, params Visualizat
 
 		// Выводим проценты
 		percentArgs := make([]interface{}, len(data.Models))
-		for i, model := range data.Models {
-			percentArgs[i] = model.Progress * 100
+		for i := range data.Models {
+			percentArgs[i] = data.Models[i].Progress * 100
 		}
 		result.WriteString(fmt.Sprintf(percentLine+"\n", percentArgs...))
 	}
@@ -338,12 +338,12 @@ func generateMermaidVisualization(data ChainVisualizationData, params Visualizat
 	result.WriteString("```mermaid\nflowchart LR\n")
 
 	// Узлы для моделей
-	for i, model := range data.Models {
+	for i := range data.Models {
 		nodeId := fmt.Sprintf("model%d", i+1)
 
 		// Определяем стиль узла на основе статуса
 		style := ""
-		switch model.Status {
+		switch data.Models[i].Status {
 		case "running":
 			style = "fill:#b3e0ff,stroke:#4da6ff"
 		case "completed":
@@ -355,9 +355,9 @@ func generateMermaidVisualization(data ChainVisualizationData, params Visualizat
 		}
 
 		// Формируем содержимое узла
-		content := fmt.Sprintf("%s<br/>(%s)", model.Role, model.Provider)
+		content := fmt.Sprintf("%s<br/>(%s)", data.Models[i].Role, data.Models[i].Provider)
 		if params.ShowProgress {
-			content += fmt.Sprintf("<br/>%.1f%%", model.Progress*100)
+			content += fmt.Sprintf("<br/>%.1f%%", data.Models[i].Progress*100)
 		}
 
 		// Добавляем узел

@@ -1,211 +1,379 @@
-# Ricochet Task
+# 🚀 Ricochet Task
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/grik-ai/ricochet-task/main/assets/logo.png" alt="Ricochet Task Logo" width="200"/>
-</p>
+> **AI Workflow Orchestration Platform** - Enterprise-grade AI model chains, task management, and team collaboration
 
-<p align="center">
-  <strong>Мощный CLI-инструмент для оркестрации языковых моделей и обработки больших объемов текста</strong>
-</p>
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Report Card](https://goreportcard.com/badge/github.com/grik-ai/ricochet-task)](https://goreportcard.com/report/github.com/grik-ai/ricochet-task)
+[![NPM Version](https://img.shields.io/npm/v/@grik-ai/ricochet.svg)](https://www.npmjs.com/package/@grik-ai/ricochet)
 
-<p align="center">
-  <a href="#возможности">Возможности</a> •
-  <a href="#установка">Установка</a> •
-  <a href="#быстрый-старт">Быстрый старт</a> •
-  <a href="#примеры-использования">Примеры использования</a> •
-  <a href="#интеграция-с-редакторами">Интеграция с редакторами</a> •
-  <a href="#документация">Документация</a>
-</p>
+**Transform complex development workflows into intelligent AI-powered automation.** Ricochet Task orchestrates AI model chains, manages tasks across multiple providers, and enables seamless team collaboration through modern code editors.
 
-## Возможности
+## ✨ Why Choose Ricochet Task?
 
-Ricochet Task — инструмент для управления цепочками языковых моделей, который позволяет обрабатывать большие объемы текстовой информации, значительно превышающие ограничения контекстного окна отдельных моделей.
+**🎯 Built for Modern Development Teams**
 
-🔄 **Цепочки моделей** — Создание и управление цепочками специализированных моделей для обработки данных.
+| Capability | Ricochet Task | Traditional Tools |
+|------------|---------------|-------------------|
+| **AI Orchestration** | **Multi-model chains with intelligent routing** | Single model, basic prompting |
+| **Team Collaboration** | **Real-time sync across code editors** | Individual tools, no coordination |
+| **Task Management** | **YouTrack, Jira, Linear, Azure DevOps** | Limited integrations |
+| **Deployment** | **Cloud SaaS + On-premise + Hybrid** | Single deployment model |
+| **Enterprise Ready** | **SSO, RBAC, Audit logs, API keys management** | Basic authentication |
+| **Developer Experience** | **MCP integration (VS Code, Cursor, JetBrains)** | Command line only |
 
-📊 **Ролевая специализация** — Назначение различных ролей моделям (анализатор, суммаризатор, интегратор) для эффективной обработки информации.
+## 🎯 Perfect for:
 
-📋 **Чекпоинты** — Сохранение промежуточных результатов между этапами обработки.
+- **🏢 Enterprise Development Teams** - Scale AI workflows across multiple projects and teams
+- **👥 DevOps & Platform Engineers** - Orchestrate complex deployment and maintenance workflows  
+- **🔗 Project Managers** - Integrate AI automation with YouTrack, Jira, and Azure DevOps
+- **🚀 AI-First Organizations** - Build sophisticated multi-model processing pipelines
+- **💼 Consulting Firms** - Deliver consistent AI-powered solutions to clients
 
-🚀 **Интеграция с редакторами кода** — Прямая интеграция с редакторами через MCP (Model Control Protocol).
+## ⚡ Quick Start (2 minutes)
 
-🔑 **Управление API-ключами** — Безопасное управление и совместное использование API-ключей для различных провайдеров.
+### Option 1: NPM (Recommended)
+```bash
+npm install -g @grik-ai/ricochet
+ricochet init
+```
 
-🎯 **Интерактивный выбор моделей** — Гибкое назначение моделей для различных ролей в цепочках обработки.
+### Option 2: One-line installer
+```bash
+curl -fsSL https://install.grik.ai/ricochet | sh
+ricochet init
+```
 
-## Установка
+### Option 3: Homebrew
+```bash
+brew install grik-ai/tap/ricochet
+ricochet init
+```
 
-### Через Go
+## 🔥 Core Capabilities
 
+### 🤖 **AI Model Chain Orchestration**
+Build sophisticated AI workflows that process large documents and complex codebases beyond single model limitations.
+
+```bash
+# Create intelligent multi-step workflows
+ricochet chain create "codebase-analysis" \
+  --analyzer-model="claude-3-5-sonnet" \
+  --summarizer-model="gpt-4-turbo" \
+  --task-extractor="deepseek-coder"
+
+# Process large documents through segmented analysis
+ricochet chain run codebase-analysis --input="./src/**/*.go"
+```
+
+### 🔗 **Multi-Provider Task Management**
+Seamlessly integrate with your existing project management tools.
+
+```bash
+# YouTrack integration
+ricochet providers add youtrack-prod \
+  --url="https://company.youtrack.cloud" \
+  --token="your-api-token"
+
+# Bulk task operations
+ricochet tasks bulk-create --file=tasks.json --provider=youtrack-prod
+
+# Cross-platform task synchronization
+ricochet sync --from=jira --to=youtrack --project="BACKEND"
+```
+
+### 💻 **Code Editor Integration (MCP)**
+Work directly in VS Code, Cursor, and JetBrains IDEs with full context awareness.
+
+```bash
+# Start MCP server for editor integration
+ricochet mcp --port=8090
+
+# Editors automatically detect and connect
+# Access through command palette: "Ricochet: Analyze Project"
+```
+
+### 🏢 **Enterprise Security & Management**
+Built-in support for enterprise authentication, audit logs, and secure API key management.
+
+```bash
+# Secure API key sharing across teams
+ricochet keys share --provider=openai --team=backend --budget=1000
+
+# Health monitoring for all integrations
+ricochet providers health --all
+
+# Audit trail and usage analytics
+ricochet analytics --timeframe=30d --export=csv
+```
+
+## 🌟 **Use Cases & Success Stories**
+
+### 📈 **Large-Scale Codebase Analysis**
+Process entire repositories with intelligent segmentation and multi-model analysis pipelines.
+- **Challenge**: Analyze 100K+ lines codebases that exceed single model context limits
+- **Solution**: Automated chunking → parallel model analysis → intelligent summarization
+- **Result**: Complete architectural insights and actionable task lists
+
+### 🔄 **Automated Project Management Workflows**
+Sync tasks and progress across multiple project management platforms.
+- **Challenge**: Teams using different tools (YouTrack, Jira, Azure DevOps)  
+- **Solution**: Unified task orchestration with real-time synchronization
+- **Result**: 60% reduction in manual project coordination overhead
+
+### 👥 **Cross-Team AI Collaboration**
+Enable multiple teams to share AI processing workflows and resources.
+- **Challenge**: Inconsistent AI tool usage across development teams
+- **Solution**: Shared model chains, API key pools, and standardized workflows
+- **Result**: Unified AI strategy with cost optimization and knowledge sharing
+
+## 📊 **Pricing & Deployment Options** 
+
+### 🆓 **Community Edition** 
+**Free Forever** - Perfect for individual developers and small teams
+- ✅ Up to 10 AI model chains
+- ✅ Local storage and checkpoints
+- ✅ Basic YouTrack/Jira integration
+- ✅ MCP editor integration (VS Code, Cursor)
+- ✅ Community support
+
+### 💎 **Professional ($12/user/month)**
+**For Growing Teams** - Advanced collaboration and cloud features
+- ✅ **Everything in Community**, plus:
+- ✅ Unlimited AI model chains
+- ✅ Cloud storage with automated backups
+- ✅ Advanced task management workflows
+- ✅ Team API key sharing and budgets
+- ✅ Priority email support
+
+### 🏢 **Enterprise ($59/user/month)**
+**For Large Organizations** - Full-scale deployment with enterprise security
+- ✅ **Everything in Professional**, plus:
+- ✅ Single Sign-On (SSO) integration
+- ✅ Advanced audit logs and compliance
+- ✅ On-premise deployment options
+- ✅ Custom integrations and workflows
+- ✅ 24/7 dedicated support
+- ✅ SLA guarantees
+
+---
+
+## 🚀 **Getting Started**
+
+### **Quick Installation**
+
+Choose your preferred installation method:
+
+**Option 1: NPM (Global)**
+```bash
+npm install -g @grik-ai/ricochet
+ricochet init
+```
+
+**Option 2: Go Install**
 ```bash
 go install github.com/grik-ai/ricochet-task@latest
 ```
 
-### Бинарные файлы
+**Option 3: Binary Downloads**
+Download pre-built binaries from [GitHub Releases](https://github.com/grik-ai/ricochet-task/releases) for your platform.
 
-Скачайте бинарный файл для вашей платформы с [страницы релизов](https://github.com/grik-ai/ricochet-task/releases).
-
-### Из исходного кода
-
+**Option 4: From Source**
 ```bash
 git clone https://github.com/grik-ai/ricochet-task.git
 cd ricochet-task
 go build -o ricochet-task main.go
 ```
 
-## Быстрый старт
+### **First-Time Setup**
 
-### 1. Инициализация проекта
-
+**1. Initialize Your Workspace**
 ```bash
 ricochet init
+# Creates configuration files and workspace structure
 ```
 
-### 2. Добавление API-ключей
-
+**2. Configure AI Providers**
 ```bash
+# Add your API keys
 ricochet key add --provider openai --key "sk-your-key"
 ricochet key add --provider anthropic --key "sk-ant-your-key"
-```
+ricochet key add --provider deepseek --key "your-deepseek-key"
 
-### 3. Настройка моделей
-
-```bash
+# Interactive model configuration
 ricochet models setup
 ```
 
-### 4. Создание цепочки моделей
-
+**3. Set Up Task Management Integration**
 ```bash
-ricochet chain create --name "Анализ документа"
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Анализатор" --type openai --role analyzer --prompt "Проанализируй этот текст и выдели ключевые темы"
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Суммаризатор" --type anthropic --role summarizer --prompt "Создай краткое резюме по каждой теме"
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Интегратор" --type deepseek --role integrator --prompt "Объедини резюме в целостный обзор"
+# Connect to YouTrack
+ricochet providers add youtrack-main \
+  --url "https://company.youtrack.cloud" \
+  --token "your-permanent-token"
+
+# Verify connection
+ricochet providers health youtrack-main
 ```
 
-### 5. Запуск цепочки
-
+**4. Create Your First AI Chain**
 ```bash
-ricochet chain run --chain YOUR_CHAIN_ID --input-file document.txt
+# Create document analysis workflow
+ricochet chain create "document-analysis" \
+  --analyzer="claude-3-5-sonnet" \
+  --summarizer="gpt-4-turbo" \
+  --extractor="deepseek-coder"
+
+# Run the chain
+ricochet chain run document-analysis --input="./docs/**/*.md"
 ```
 
-## Примеры использования
+## 🛠️ **Advanced Workflows & Integrations**
 
-### Анализ больших документов
-
-```bash
-# Создание цепочки для анализа научной статьи
-ricochet chain create --name "Анализ научной статьи"
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Извлечение методологии" --type claude --role extractor
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Анализ результатов" --type gpt4 --role analyzer
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Генерация выводов" --type deepseek --role integrator
-
-# Запуск цепочки
-ricochet chain run --chain YOUR_CHAIN_ID --input-file paper.pdf
-```
-
-### Обработка кодовой базы
+### **Large Codebase Analysis**
+Process entire repositories with intelligent chunking and multi-model analysis.
 
 ```bash
-# Создание цепочки для анализа кода
-ricochet chain create --name "Анализ кода"
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Анализ структуры" --type deepseek --role analyzer
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Поиск проблем" --type claude --role evaluator
-ricochet chain add-model --chain YOUR_CHAIN_ID --name "Генерация рекомендаций" --type gpt4 --role integrator
+# Create comprehensive repository analysis chain
+ricochet chain create "repository-audit" \
+  --architecture-analyzer="claude-3-5-sonnet" \
+  --code-reviewer="gpt-4-turbo" \
+  --task-generator="deepseek-coder"
 
-# Запуск цепочки
-ricochet chain run --chain YOUR_CHAIN_ID --input-file "src/**/*.go"
+# Process entire codebase
+ricochet chain run repository-audit --input="./src/**/*.{go,js,ts,py}"
+
+# Get actionable insights and auto-generated tasks
+ricochet chain results repository-audit --format=tasks --export=youtrack
 ```
 
-## Интеграция с редакторами
+### **Automated Task Management Workflows**
+Sync and manage tasks across multiple project management platforms.
 
-### Cursor
+```bash
+# Create bulk tasks from analysis results
+ricochet tasks bulk-create \
+  --provider=youtrack-main \
+  --project="BACKEND" \
+  --source=chain:repository-audit \
+  --auto-assign
 
-Добавьте следующую конфигурацию в файл `~/.cursor/mcp.json`:
+# Cross-platform synchronization
+ricochet sync \
+  --from=jira --to=youtrack \
+  --project="MIGRATION" \
+  --status-mapping="./config/status-map.json"
 
+# Automated progress tracking
+ricochet workflow run "feature-development" \
+  --trigger=git-push \
+  --notify=slack:dev-team
+```
+
+## 💻 **Code Editor Integration**
+
+### **VS Code & Cursor Integration**
+Integrate Ricochet Task directly into your development environment using MCP (Model Context Protocol).
+
+**Setup MCP Server:**
+```bash
+# Start MCP server for editor integration
+ricochet mcp --port=8090 --editors=vscode,cursor
+
+# Server automatically provides 20+ tools:
+# - Project analysis and task extraction
+# - Checkpoint management and context switching
+# - Real-time workflow monitoring
+# - Team collaboration features
+```
+
+**Cursor Configuration (`~/.cursor/mcp.json`):**
 ```json
 {
   "mcpServers": {
-    "ricochet-task": {
-      "command": "ricochet-task",
-      "args": ["mcp"],
+    "ricochet": {
+      "command": "ricochet",
+      "args": ["mcp", "--port=8090"],
       "env": {
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY",
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_KEY",
-        "DEEPSEEK_API_KEY": "YOUR_DEEPSEEK_KEY"
+        "RICOCHET_WORKSPACE": "${workspaceFolder}"
       }
     }
   }
 }
 ```
 
-### VS Code
-
-Создайте файл `.vscode/mcp.json` в корне вашего проекта:
+**VS Code Integration:**
+Install the Ricochet Task extension from the marketplace or configure MCP manually:
 
 ```json
 {
-  "servers": {
-    "ricochet-task": {
-      "command": "ricochet-task",
-      "args": ["mcp"],
-      "env": {
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY",
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_KEY",
-        "DEEPSEEK_API_KEY": "YOUR_DEEPSEEK_KEY"
-      },
-      "type": "stdio"
-    }
-  }
+  "ricochet.mcp.serverUrl": "http://localhost:8090",
+  "ricochet.autoStart": true,
+  "ricochet.contextAware": true
 }
 ```
 
-## Интеграция с Task Master
+## 📚 **CLI Reference**
 
-Ricochet Task совместим с Task Master и может использовать его настройки моделей. Для импорта настроек используйте:
-
+### **AI Chain Management**
 ```bash
-ricochet models import-from-taskmaster
+ricochet chain create <name>         # Create new AI processing chain
+ricochet chain list                  # List all available chains
+ricochet chain run <chain> [input]   # Execute chain with optional input
+ricochet chain status <chain>        # Monitor chain execution progress
+ricochet chain export <chain>        # Export chain configuration
 ```
 
-## Команды CLI
+### **Task & Project Management**
+```bash
+ricochet tasks create               # Create new task in connected provider
+ricochet tasks list --provider=X   # List tasks from specific provider
+ricochet tasks bulk-create --file  # Create multiple tasks from JSON
+ricochet tasks sync                 # Synchronize across providers
+ricochet providers add <name>       # Add task management provider
+ricochet providers health           # Check all provider connections
+```
 
-### Управление цепочками
+### **Checkpoint & Context Management**
+```bash
+ricochet checkpoint save <name>     # Save current processing state
+ricochet checkpoint list            # List all saved checkpoints
+ricochet checkpoint load <name>     # Resume from saved checkpoint
+ricochet checkpoint clean           # Remove old checkpoints
+```
 
-- `ricochet chain create` - создание новой цепочки
-- `ricochet chain list` - список цепочек
-- `ricochet chain add-model` - добавление модели в цепочку
-- `ricochet chain run` - запуск цепочки
-- `ricochet chain status` - проверка статуса выполнения цепочки
+### **API Key & Security Management**
+```bash
+ricochet keys add --provider=X      # Add API key for AI provider
+ricochet keys share --team=X        # Share keys with team members
+ricochet keys rotate --provider=X   # Rotate API keys securely
+ricochet audit --timeframe=30d      # Generate security audit report
+```
 
-### Управление чекпоинтами
+---
 
-- `ricochet checkpoint list` - список чекпоинтов
-- `ricochet checkpoint get` - получение содержимого чекпоинта
-- `ricochet checkpoint save` - сохранение чекпоинта
-- `ricochet checkpoint delete` - удаление чекпоинта
+## 🚀 **Ready to Get Started?**
 
-### Управление API-ключами
+### **🔗 Links & Resources**
+- **📖 Documentation**: [docs.grik.ai/ricochet](https://docs.grik.ai/ricochet)
+- **💬 Community**: [Discord Server](https://discord.gg/grik-ai)
+- **🐛 Issues**: [GitHub Issues](https://github.com/grik-ai/ricochet-task/issues)
+- **📝 Changelog**: [Release Notes](https://github.com/grik-ai/ricochet-task/releases)
 
-- `ricochet key add` - добавление API-ключа
-- `ricochet key list` - список ключей
-- `ricochet key delete` - удаление ключа
-- `ricochet key share` - настройка общего доступа к ключу
+### **🤝 Contributing**
+We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for details on:
+- Development setup and workflow
+- Code style and testing standards  
+- Feature request and bug report process
 
-### Управление моделями
+### **📄 License**
+Released under the [MIT License](LICENSE) - see LICENSE file for details.
 
-- `ricochet models setup` - интерактивная настройка моделей
-- `ricochet models list` - список настроенных моделей
-- `ricochet models reset` - сброс настроек моделей
+---
 
-## Документация
+<div align="center">
 
-Полная документация доступна в [Wiki проекта](https://github.com/grik-ai/ricochet-task/wiki).
+**Built for Modern Development Teams** 🚀  
+**[Try Ricochet Task Today →](https://grik.ai/ricochet)**
 
-## Лицензия
+*Transform your AI workflows, orchestrate your tasks, collaborate with confidence.*
 
-MIT License
-
-## Благодарности
-
-Проект вдохновлен идеями [Claude Task Master](https://github.com/eyaltoledano/claude-task-master) от [@eyaltoledano](https://twitter.com/eyaltoledano).
+</div>

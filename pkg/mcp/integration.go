@@ -198,7 +198,7 @@ func (m *MCPIntegration) GenerateEditorConfig(editor string, chainStore chain.St
 }
 
 // generateVSCodeConfig генерирует конфигурацию для VS Code
-func generateVSCodeConfig(chains []chain.Chain, config *MCPConfig) (string, error) {
+func generateVSCodeConfig(chains []chain.Chain, _ *MCPConfig) (string, error) {
 	// Создаем JSON-структуру для конфигурации
 	type CommandConfig struct {
 		Title     string `json:"title"`
@@ -241,7 +241,7 @@ func generateVSCodeConfig(chains []chain.Chain, config *MCPConfig) (string, erro
 }
 
 // generateCursorConfig генерирует конфигурацию для Cursor
-func generateCursorConfig(chains []chain.Chain, config *MCPConfig) (string, error) {
+func generateCursorConfig(chains []chain.Chain, _ *MCPConfig) (string, error) {
 	// Создаем JSON-структуру для конфигурации
 	type ChainConfig struct {
 		ID          string `json:"id"`

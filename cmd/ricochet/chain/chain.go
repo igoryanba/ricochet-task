@@ -333,6 +333,14 @@ var runCmd = &cobra.Command{
 		// TODO: Реализовать запуск цепочки с использованием Ricochet Service
 		// В данной реализации просто выводим информацию о запуске
 		fmt.Printf("Запущена цепочка '%s' с %d моделями.\n", c.Name, len(c.Models))
+		// Выводим первые 200 символов входных данных, чтобы подтвердить корректность передачи
+		if len(input) > 0 {
+			preview := input
+			if len(preview) > 200 {
+				preview = preview[:200] + "..."
+			}
+			fmt.Printf("Входные данные (превью): %s\n", preview)
+		}
 		fmt.Println("ID запуска: " + uuid.New().String())
 		fmt.Println("Статус: обработка")
 		fmt.Println("Для проверки статуса используйте команду: ricochet chain status --chain " + chainID)

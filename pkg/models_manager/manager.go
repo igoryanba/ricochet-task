@@ -661,3 +661,8 @@ func (m *ModelsManager) GetRoles() []ModelRole {
 
 	return roles
 }
+
+// GetAvailableRoles возвращает список всех доступных ролей моделей
+func (m *ModelsManager) GetAvailableRoles() []ModelRole {
+	return m.GetRoles()
+}
