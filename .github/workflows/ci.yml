@@ -55,11 +55,19 @@ jobs:
       - name: Build multiplatform binaries
         run: |
           mkdir -p dist
-          for os in linux darwin windows; do \
-            GOOS=$os GOARCH=amd64 go build -v -o dist/ricochet-task-$os-amd64${{ "" if os != "windows" else ".exe" }} ./ricochet-task/...; \
+          for os in linux darwin windows; do
+            if [ "$os" = "windows" ]; then
+              ext=".exe"
+            else
+              ext=""
+            fi
+            GOOS=$os GOARCH=amd64 go build -v -o "dist/ricochet-task-$os-amd64$ext" ./cmd/ricochet/
           done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/* 
+          files: dist/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
